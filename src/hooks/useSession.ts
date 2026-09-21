@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Session, SessionPlayer, Player, Match, AttendanceStatus, CourtMeta } from '../models/types';
 import { StorageService } from '../storage/storage';
 import { v4 as uuidv4 } from 'uuid';
-import { generateMatchSuggestion } from '../algorithms/matchingEngine';
+import { generateMatchSuggestion, type MatchSuggestion } from '../algorithms/matchingEngine';
 import { roundUpTo30 } from '../utils/costCalc';
 
 export function useSession() {
@@ -186,8 +186,12 @@ export function useSession() {
     });
   };
 
-  const autoMatch = (requestedCourt?: string) => {
-    if (!currentSession) return;
+  /** Gợi ý xếp sân (không ghi session) — dùng cho màn preview. */
+  const previewAutoMatch = (
+    requestedCourt?: string,
+    excludePlayerSets?: string[][],
+  ): { courtId: string; suggestion: MatchSuggestion } | null => {
+    if (!currentSession) return null;
     const players = StorageService.getPlayers();
 
     const waitingSessionPlayers = currentSession.players.filter(p => p.attendance === 'WAITING');
@@ -211,7 +215,11 @@ export function useSession() {
 
     if (activeCourts.length >= currentSession.numberOfCourts) {
       alert('Đã hết sân trống!');
-      return;
+      return null;
+    }
+    if (requestedCourt && activeCourts.includes(String(requestedCourt))) {
+      alert('Sân này đang có trận!');
+      return null;
     }
 
     const suggestion = generateMatchSuggestion({
@@ -219,39 +227,49 @@ export function useSession() {
       activeMatches: currentSession.matches,
       sessionHistory: [],
       availableCourts: currentSession.numberOfCourts,
+      excludePlayerSets,
     });
 
-    if (suggestion) {
-      const newMatch: Match = {
-        id: uuidv4(),
-        sessionId: currentSession.id,
-        courtId: availableCourt,
-        type: suggestion.type,
-        team1: suggestion.team1,
-        team2: suggestion.team2,
-        status: 'PLAYING',
-        assignmentMode: 'AUTO',
-        startTime: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const newPlayers = currentSession.players.map(p => {
-        if (suggestion.players.includes(p.playerId)) {
-          return { ...p, attendance: 'PLAYING' as const };
-        }
-        return p;
-      });
-
-      save({
-        ...currentSession,
-        matches: [...currentSession.matches, newMatch],
-        players: newPlayers,
-        updatedAt: new Date().toISOString(),
-      });
-    } else {
-      alert('Không đủ người chờ để xếp trận.');
+    if (!suggestion) {
+      if (!excludePlayerSets?.length) {
+        alert('Không đủ người chờ để xếp trận.');
+      }
+      return null;
     }
+
+    return { courtId: availableCourt, suggestion };
+  };
+
+  /** Xác nhận đưa gợi ý vào sân. */
+  const confirmAutoMatch = (courtId: string, suggestion: MatchSuggestion) => {
+    if (!currentSession) return;
+    const newMatch: Match = {
+      id: uuidv4(),
+      sessionId: currentSession.id,
+      courtId,
+      type: suggestion.type,
+      team1: suggestion.team1,
+      team2: suggestion.team2,
+      status: 'PLAYING',
+      assignmentMode: 'AUTO',
+      startTime: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const newPlayers = currentSession.players.map(p => {
+      if (suggestion.players.includes(p.playerId)) {
+        return { ...p, attendance: 'PLAYING' as const };
+      }
+      return p;
+    });
+
+    save({
+      ...currentSession,
+      matches: [...currentSession.matches, newMatch],
+      players: newPlayers,
+      updatedAt: new Date().toISOString(),
+    });
   };
 
   const startManualMatch = (
@@ -260,18 +278,12 @@ export function useSession() {
     assignmentMode: 'MANUAL' | 'AUTO' = 'MANUAL',
   ) => {
     if (!currentSession || playerIds.length !== 4) return;
-    const selected = StorageService.getPlayers().filter(player => playerIds.includes(player.id));
-    const females = selected.filter(player => player.gender === 'FEMALE').length;
-    if (![0, 2, 4].includes(females)) {
-      alert('Đôi Nam Nữ cần đúng 2 Nam và 2 Nữ. Hãy chọn lại cầu thủ.');
-      return;
-    }
-    const type = females === 0 ? 'ĐÔI NAM' : females === 4 ? 'ĐÔI NỮ' : 'ĐÔI NAM NỮ';
+    // Xếp thủ công luôn dùng loại trận TỰ DO (không phân biệt giới tính).
     const match: Match = {
       id: uuidv4(),
       sessionId: currentSession.id,
       courtId,
-      type,
+      type: 'TỰ DO',
       team1: [playerIds[0], playerIds[1]],
       team2: [playerIds[2], playerIds[3]],
       status: 'PLAYING',
@@ -336,7 +348,8 @@ export function useSession() {
     addCourt,
     addPlayersToSession,
     returnCourt,
-    autoMatch,
+    previewAutoMatch,
+    confirmAutoMatch,
     startManualMatch,
     endMatch,
   };

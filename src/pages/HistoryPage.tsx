@@ -12,6 +12,11 @@ const moneyK = (n: number) => {
   return `${n}đ`;
 };
 
+const formatClock = (iso?: string) => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+};
+
 export default function HistoryPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selected, setSelected] = useState<Session | null>(null);
@@ -152,6 +157,8 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
             />
           </div>
 
+          <CourtTimeSection session={session} />
+
           <div className="border border-teal-100 rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[1fr_40px_44px_76px] p-3 bg-teal-50 text-xs font-extrabold text-primary">
               <span>TÊN</span>
@@ -204,6 +211,64 @@ function CostCard({ icon, label, value }: { icon: React.ReactNode; label: string
       <span className="text-primary flex justify-center">{icon}</span>
       <p className="text-[11px] font-bold mt-0.5">{label}</p>
       <b className="text-primary text-sm">{money(value)}</b>
+    </div>
+  );
+}
+
+function CourtTimeSection({ session }: { session: Session }) {
+  const courts = session.courtNumbers?.length
+    ? session.courtNumbers
+    : Array.from({ length: session.numberOfCourts }, (_, i) => i + 1);
+
+  if (!courts.length) return null;
+
+  return (
+    <div className="border border-teal-100 rounded-2xl overflow-hidden">
+      <div className="p-3 bg-teal-50">
+        <p className="text-xs font-extrabold text-primary">CHI TIẾT GIỜ SÂN / TRẬN</p>
+      </div>
+      <div className="divide-y divide-teal-50">
+        {courts.map(courtNum => {
+          const key = String(courtNum);
+          const meta = session.courtMeta?.[key];
+          const courtStart = meta?.startedAt || session.startTime;
+          const courtEnd = meta?.returnedAt || session.endTime;
+          const matches = session.matches
+            .filter(m => m.courtId === key && m.status !== 'CANCELLED')
+            .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+          return (
+            <div key={courtNum} className="p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <b className="text-sm text-primary">Sân {courtNum}</b>
+                <span className="text-xs text-gray-500 font-bold">
+                  {formatClock(courtStart)} – {formatClock(courtEnd)}
+                </span>
+              </div>
+              {matches.length === 0 ? (
+                <p className="text-xs text-gray-400">Không có trận trên sân này.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {matches.map((m, idx) => (
+                    <li
+                      key={m.id}
+                      className="flex items-center justify-between gap-2 text-xs text-gray-600"
+                    >
+                      <span>
+                        Trận {idx + 1}
+                        {m.type ? ` · ${m.type}` : ''}
+                      </span>
+                      <span className="font-bold whitespace-nowrap">
+                        {formatClock(m.startTime)} – {formatClock(m.endTime)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { Player, Session, CostSettings, Gender, SkillLevel } from '../models/types';
+import type { Player, Session, CostSettings, Gender, SkillLevel, DefaultCourtsByWeekday } from '../models/types';
 import { v4 as uuidv4 } from 'uuid';
 
 const PLAYERS_KEY = 'badminton_players', SESSIONS_KEY = 'badminton_sessions', SETTINGS_KEY = 'badminton_settings', SEED_VERSION_KEY = 'badminton_seed_version';
@@ -14,7 +14,22 @@ const defaultSettings: CostSettings = {
   shuttleFee: 28000,
   splitMethod: 'EQUAL',
   femaleDiscountPercent: 10,
+  defaultCourtsByWeekday: {},
 };
+
+function normalizeCourtsByWeekday(raw: unknown): DefaultCourtsByWeekday {
+  if (!raw || typeof raw !== 'object') return {};
+  const result: DefaultCourtsByWeekday = {};
+  for (const key of ['0', '1', '2', '3', '4', '5', '6'] as const) {
+    const value = (raw as Record<string, unknown>)[key];
+    if (!Array.isArray(value)) continue;
+    const courts = value
+      .map(n => Number(n))
+      .filter(n => Number.isInteger(n) && n >= 1 && n <= 16);
+    if (courts.length) result[key] = [...new Set(courts)].sort((a, b) => a - b);
+  }
+  return result;
+}
 
 function normalizeSettings(raw: Partial<CostSettings> | Record<string, unknown>): CostSettings {
   const r = raw as Partial<CostSettings>;
@@ -40,7 +55,20 @@ function normalizeSettings(raw: Partial<CostSettings> | Record<string, unknown>)
       typeof r.femaleDiscountPercent === 'number'
         ? r.femaleDiscountPercent
         : defaultSettings.femaleDiscountPercent,
+    defaultCourtsByWeekday: normalizeCourtsByWeekday(r.defaultCourtsByWeekday),
   };
+}
+
+/** Courts configured for a weekday (`Date.getDay()`), or fallback defaults. */
+export function getDefaultCourtsForWeekday(
+  weekday: number,
+  settings?: CostSettings,
+  fallback: number[] = [1, 2, 3],
+): number[] {
+  const cfg = settings ?? StorageService.getSettings();
+  const key = String(weekday) as keyof DefaultCourtsByWeekday;
+  const courts = cfg.defaultCourtsByWeekday?.[key];
+  return courts?.length ? [...courts] : [...fallback];
 }
 
 export const StorageService = {

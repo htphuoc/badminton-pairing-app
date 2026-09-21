@@ -4,8 +4,9 @@ import { useSession } from '../hooks/useSession';
 import { usePlayers } from '../hooks/usePlayers';
 import BadmintonCourt from '../components/BadmintonCourt';
 import GenderAvatar from '../components/GenderAvatar';
-import { StorageService } from '../storage/storage';
+import { getDefaultCourtsForWeekday, StorageService } from '../storage/storage';
 import { careerMatchCount } from '../utils/costCalc';
+import { reshuffleSuggestion, type MatchSuggestion } from '../algorithms/matchingEngine';
 import type { Gender, MemberType, SkillLevel } from '../models/types';
 
 const label = (m: number) =>
@@ -16,6 +17,7 @@ function MatchTypeBadge({ type }: { type: string }) {
     'ĐÔI NAM': 'bg-blue-600 text-white',
     'ĐÔI NỮ': 'bg-pink-600 text-white',
     'ĐÔI NAM NỮ': 'bg-amber-500 text-white',
+    'TỰ DO': 'bg-emerald-600 text-white',
   };
   return (
     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${colors[type] ?? 'bg-gray-400 text-white'}`}>
@@ -33,7 +35,8 @@ export default function SessionPage() {
     currentSession,
     createSession,
     endSession,
-    autoMatch,
+    previewAutoMatch,
+    confirmAutoMatch,
     startManualMatch,
     endMatch,
     addCourt,
@@ -42,16 +45,44 @@ export default function SessionPage() {
   } = useSession();
   const { players } = usePlayers();
 
-  const [courts, setCourts] = useState([1, 2, 3]);
+  const [courts, setCourts] = useState(() => getDefaultCourtsForWeekday(new Date().getDay()));
   const [mins, setMins] = useState(120);
   const [ids, setIds] = useState<string[]>([]);
-  const [modal, setModal] = useState<{ court: string; manual: boolean } | null>(null);
+  const [modal, setModal] = useState<{ court: string } | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
   const [addingMembers, setAddingMembers] = useState(false);
   const [memberPick, setMemberPick] = useState<string[]>([]);
   const [newCourt, setNewCourt] = useState(4);
   const [addMins, setAddMins] = useState(60);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [autoPreview, setAutoPreview] = useState<{
+    courtId: string;
+    suggestion: MatchSuggestion;
+    excluded: string[][];
+  } | null>(null);
+
+  const openAutoPreview = (courtId?: string) => {
+    const result = previewAutoMatch(courtId);
+    if (!result) return;
+    setAutoPreview({ courtId: result.courtId, suggestion: result.suggestion, excluded: [] });
+  };
+
+  const reshuffleAutoPreview = () => {
+    if (!autoPreview) return;
+    const excluded = [...autoPreview.excluded, autoPreview.suggestion.players];
+    const next = previewAutoMatch(autoPreview.courtId, excluded);
+    if (next) {
+      setAutoPreview({ courtId: next.courtId, suggestion: next.suggestion, excluded });
+      return;
+    }
+    // Hết tổ hợp khác → đảo đội trên cùng 4 người
+    setAutoPreview({
+      ...autoPreview,
+      suggestion: reshuffleSuggestion(autoPreview.suggestion),
+      excluded,
+    });
+  };
 
   const allSessions = useMemo(() => StorageService.getSessions(), [currentSession, players]);
 
@@ -60,6 +91,11 @@ export default function SessionPage() {
       setIds(players.filter(p => p.memberType === 'CỐ ĐỊNH').map(p => p.id));
     }
   }, [players]);
+
+  useEffect(() => {
+    if (currentSession) return;
+    setCourts(getDefaultCourtsForWeekday(new Date().getDay()));
+  }, [currentSession]);
 
   const toggle = (id: string) =>
     setIds(x => (x.includes(id) ? x.filter(i => i !== id) : [...x, id]));
@@ -221,7 +257,7 @@ export default function SessionPage() {
           </small>
         </div>
         <button
-          onClick={endSession}
+          onClick={() => setConfirmEnd(true)}
           className="border border-white/60 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap"
         >
           KẾT THÚC BUỔI
@@ -299,7 +335,7 @@ export default function SessionPage() {
             ) : (
               <div className="grid grid-cols-3 gap-1.5 p-3">
                 <button
-                  onClick={() => setModal({ court: String(c), manual: false })}
+                  onClick={() => openAutoPreview(String(c))}
                   className="bg-primary text-white rounded-xl py-2.5 px-1 text-[11px] font-extrabold leading-tight disabled:opacity-50"
                   disabled={returned}
                 >
@@ -309,12 +345,12 @@ export default function SessionPage() {
                 <button
                   onClick={() => {
                     setPicked([]);
-                    setModal({ court: String(c), manual: true });
+                    setModal({ court: String(c) });
                   }}
                   className="border border-primary text-primary rounded-xl py-2.5 px-1 text-[11px] font-extrabold leading-tight disabled:opacity-50"
                   disabled={returned}
                 >
-                  Thủ công
+                  THỦ CÔNG
                 </button>
                 <button
                   disabled={!returnEnabled}
@@ -374,7 +410,7 @@ export default function SessionPage() {
         {waiting.length >= 4 && (
           <div className="p-3 border-t border-teal-50">
             <button
-              onClick={() => autoMatch()}
+              onClick={() => openAutoPreview()}
               className="w-full bg-primary text-white rounded-xl py-3 font-bold"
             >
               <Shuffle className="inline mr-1" size={17} />
@@ -517,90 +553,189 @@ export default function SessionPage() {
         </div>
       )}
 
-      {/* Modal xếp trận */}
+      {/* Modal xếp thủ công */}
       {modal && (
         <div className="fixed inset-0 bg-black/50 z-50 grid place-items-end sm:place-items-center">
           <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5">
             <div className="flex justify-between items-start mb-3">
-              <h3 className="font-extrabold">
-                SÂN {modal.court} · {modal.manual ? 'XẾP THỦ CÔNG' : 'XÁC NHẬN XẾP TỰ ĐỘNG'}
-              </h3>
-              <button onClick={() => setModal(null)}>
+              <h3 className="font-extrabold">SÂN {modal.court} · XẾP THỦ CÔNG</h3>
+              <button onClick={() => setModal(null)} aria-label="Đóng">
                 <X size={20} />
               </button>
             </div>
 
-            {modal.manual ? (
-              <>
-                <p className="text-xs text-gray-500 mb-2">Chọn đúng 4 người · 2 người đầu = Đội A</p>
-                <div className="max-h-72 overflow-y-auto divide-y divide-teal-50">
-                  {waiting.map(sp => {
-                    const info = resolvePlayer(sp.playerId);
-                    const isSel = picked.includes(sp.playerId);
-                    return (
-                      <button
-                        key={sp.playerId}
-                        onClick={() =>
-                          setPicked(x =>
-                            x.includes(sp.playerId)
-                              ? x.filter(i => i !== sp.playerId)
-                              : x.length < 4
-                                ? [...x, sp.playerId]
-                                : x,
-                          )
-                        }
-                        className={`w-full p-3 text-left flex items-center justify-between gap-2 ${
-                          isSel ? 'bg-teal-50' : ''
-                        }`}
-                      >
-                        <span className="flex items-center gap-2 min-w-0">
-                          <GenderAvatar gender={info.gender} size={32} />
-                          <span className="min-w-0">
-                            <b className="block truncate">{sp.playerName}</b>
-                            <small className="text-gray-400">
-                              {info.skillLevel} · {sp.matchesPlayed}tr · {memberLabel(info.memberType)}
-                            </small>
-                          </span>
-                        </span>
-                        <span
-                          className={`w-6 h-6 rounded-full border grid place-items-center flex-shrink-0 ${
-                            isSel ? 'bg-primary text-white border-primary' : 'border-gray-300'
-                          }`}
-                        >
-                          {isSel && <Check size={13} />}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-center mt-2 text-gray-400">
-                  Đã chọn: {picked.length}/4
-                  {picked.length > 0 && (
-                    <>
-                      {' '}
-                      · Đội A: {picked.slice(0, 2).map(name).join(', ')}
-                      {picked.length > 2 && <> · Đội B: {picked.slice(2).map(name).join(', ')}</>}
-                    </>
-                  )}
-                </p>
-              </>
-            ) : (
-              <p className="my-4 text-gray-600 text-sm">
-                Hệ thống sẽ chọn 4 người phù hợp nhất từ danh sách chờ, ưu tiên người đợi lâu nhất.
-              </p>
-            )}
+            <p className="text-xs text-gray-500 mb-2">
+              Chọn đúng 4 người · 2 người đầu = Đội A · Loại trận: TỰ DO
+            </p>
+            <div className="max-h-72 overflow-y-auto divide-y divide-teal-50">
+              {waiting.map(sp => {
+                const info = resolvePlayer(sp.playerId);
+                const isSel = picked.includes(sp.playerId);
+                return (
+                  <button
+                    key={sp.playerId}
+                    onClick={() =>
+                      setPicked(x =>
+                        x.includes(sp.playerId)
+                          ? x.filter(i => i !== sp.playerId)
+                          : x.length < 4
+                            ? [...x, sp.playerId]
+                            : x,
+                      )
+                    }
+                    className={`w-full p-3 text-left flex items-center justify-between gap-2 ${
+                      isSel ? 'bg-teal-50' : ''
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <GenderAvatar gender={info.gender} size={32} />
+                      <span className="min-w-0">
+                        <b className="block truncate">{sp.playerName}</b>
+                        <small className="text-gray-400">
+                          {info.skillLevel} · {sp.matchesPlayed}tr · {memberLabel(info.memberType)}
+                        </small>
+                      </span>
+                    </span>
+                    <span
+                      className={`w-6 h-6 rounded-full border grid place-items-center flex-shrink-0 ${
+                        isSel ? 'bg-primary text-white border-primary' : 'border-gray-300'
+                      }`}
+                    >
+                      {isSel && <Check size={13} />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-center mt-2 text-gray-400">
+              Đã chọn: {picked.length}/4
+              {picked.length > 0 && (
+                <>
+                  {' '}
+                  · Đội A: {picked.slice(0, 2).map(name).join(', ')}
+                  {picked.length > 2 && <> · Đội B: {picked.slice(2).map(name).join(', ')}</>}
+                </>
+              )}
+            </p>
 
             <button
-              disabled={modal.manual && picked.length !== 4}
+              disabled={picked.length !== 4}
               onClick={() => {
-                if (modal.manual) startManualMatch(modal.court, picked);
-                else autoMatch(modal.court);
+                startManualMatch(modal.court, picked);
                 setModal(null);
               }}
               className="mt-4 w-full bg-primary disabled:bg-gray-300 text-white rounded-xl py-3 font-bold"
             >
               XÁC NHẬN BẮT ĐẦU
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Preview xếp tự động */}
+      {autoPreview && (
+        <div className="fixed inset-0 bg-black/50 z-50 grid place-items-end sm:place-items-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-extrabold uppercase">Xem trước xếp sân</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Sân {autoPreview.courtId} · {autoPreview.suggestion.type}
+                </p>
+              </div>
+              <button onClick={() => setAutoPreview(null)} aria-label="Đóng">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex justify-center">
+              <MatchTypeBadge type={autoPreview.suggestion.type} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-teal-100 p-3 space-y-2">
+                <p className="text-[11px] font-extrabold text-primary tracking-wide">ĐỘI A</p>
+                {autoPreview.suggestion.team1.map(id => {
+                  const info = resolvePlayer(id);
+                  return (
+                    <div key={id} className="flex items-center gap-2 min-w-0">
+                      <GenderAvatar gender={info.gender} size={32} />
+                      <div className="min-w-0">
+                        <b className="block text-sm truncate">{info.name}</b>
+                        <span className="text-[11px] text-gray-500 font-bold">{info.skillLevel}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="rounded-2xl border border-teal-100 p-3 space-y-2">
+                <p className="text-[11px] font-extrabold text-primary tracking-wide">ĐỘI B</p>
+                {autoPreview.suggestion.team2.map(id => {
+                  const info = resolvePlayer(id);
+                  return (
+                    <div key={id} className="flex items-center gap-2 min-w-0">
+                      <GenderAvatar gender={info.gender} size={32} />
+                      <div className="min-w-0">
+                        <b className="block text-sm truncate">{info.name}</b>
+                        <span className="text-[11px] text-gray-500 font-bold">{info.skillLevel}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setAutoPreview(null)}
+                className="border border-gray-300 rounded-xl py-3 text-xs font-extrabold"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                onClick={reshuffleAutoPreview}
+                className="border border-primary text-primary rounded-xl py-3 text-xs font-extrabold"
+              >
+                Xếp Lại
+              </button>
+              <button
+                onClick={() => {
+                  confirmAutoMatch(autoPreview.courtId, autoPreview.suggestion);
+                  setAutoPreview(null);
+                }}
+                className="bg-primary text-white rounded-xl py-3 text-xs font-extrabold"
+              >
+                Vào Sân
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmEnd && (
+        <div className="fixed inset-0 bg-black/50 z-50 grid place-items-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
+            <h3 className="font-extrabold uppercase">Kết thúc buổi</h3>
+            <p className="text-sm text-gray-600">
+              Bạn có chắc chắn muốn kết thúc buổi chơi này không?
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setConfirmEnd(false)}
+                className="border border-gray-300 rounded-xl py-3 font-bold"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmEnd(false);
+                  endSession();
+                }}
+                className="bg-primary text-white rounded-xl py-3 font-bold"
+              >
+                Xác nhận
+              </button>
+            </div>
           </div>
         </div>
       )}

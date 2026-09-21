@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Percent, Save, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, Percent, Save, SlidersHorizontal } from 'lucide-react';
 import { StorageService } from '../storage/storage';
-import type { CostSettings } from '../models/types';
+import type { CostSettings, DefaultCourtsByWeekday } from '../models/types';
 
 const empty: CostSettings = {
   courtFeePerHour: 130000,
@@ -10,10 +10,24 @@ const empty: CostSettings = {
   shuttleFee: 28000,
   splitMethod: 'EQUAL',
   femaleDiscountPercent: 10,
+  defaultCourtsByWeekday: {},
 };
+
+/** UI order Mon→Sun; value = Date.getDay() */
+const WEEKDAYS: { key: keyof DefaultCourtsByWeekday; label: string }[] = [
+  { key: '1', label: 'Thứ 2' },
+  { key: '2', label: 'Thứ 3' },
+  { key: '3', label: 'Thứ 4' },
+  { key: '4', label: 'Thứ 5' },
+  { key: '5', label: 'Thứ 6' },
+  { key: '6', label: 'Thứ 7' },
+  { key: '0', label: 'Chủ Nhật' },
+];
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<CostSettings>(empty);
+  const [activeDay, setActiveDay] = useState<keyof DefaultCourtsByWeekday>('1');
+
   useEffect(() => setSettings(StorageService.getSettings()), []);
 
   const update = (key: keyof CostSettings, value: number | CostSettings['splitMethod']) =>
@@ -24,6 +38,21 @@ export default function SettingsPage() {
       }
       return next;
     });
+
+  const dayCourts = settings.defaultCourtsByWeekday?.[activeDay] ?? [];
+
+  const toggleCourtForDay = (court: number) => {
+    setSettings(s => {
+      const map = { ...(s.defaultCourtsByWeekday ?? {}) };
+      const current = map[activeDay] ?? [];
+      const next = current.includes(court)
+        ? current.filter(c => c !== court)
+        : [...current, court].sort((a, b) => a - b);
+      if (next.length) map[activeDay] = next;
+      else delete map[activeDay];
+      return { ...s, defaultCourtsByWeekday: map };
+    });
+  };
 
   return (
     <div className="pb-20 space-y-5">
@@ -60,6 +89,58 @@ export default function SettingsPage() {
             <option value="BY_MATCHES">Theo số trận</option>
           </select>
         </label>
+      </section>
+
+      <section className="bg-white rounded-2xl p-5 border border-teal-50 shadow-sm space-y-4">
+        <h3 className="font-extrabold flex items-center gap-2">
+          <CalendarDays size={18} className="text-primary" />
+          SÂN MẶC ĐỊNH THEO NGÀY
+        </h3>
+        <p className="text-sm text-gray-500">
+          Khi tạo buổi chơi, hệ thống sẽ chọn sẵn các sân đã cấu hình cho ngày tương ứng.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {WEEKDAYS.map(d => {
+            const count = settings.defaultCourtsByWeekday?.[d.key]?.length ?? 0;
+            const active = activeDay === d.key;
+            return (
+              <button
+                key={d.key}
+                type="button"
+                onClick={() => setActiveDay(d.key)}
+                className={`rounded-xl px-2.5 py-1.5 text-xs font-extrabold ${
+                  active ? 'bg-primary text-white' : 'border border-teal-100 text-gray-600'
+                }`}
+              >
+                {d.label}
+                {count > 0 && (
+                  <span className={`ml-1 ${active ? 'text-teal-100' : 'text-primary'}`}>
+                    ({count})
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {Array.from({ length: 16 }, (_, i) => i + 1).map(c => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => toggleCourtForDay(c)}
+              className={`rounded-xl py-2 text-sm font-bold ${
+                dayCourts.includes(c) ? 'bg-primary text-white' : 'border border-teal-100'
+              }`}
+            >
+              Sân {c}
+            </button>
+          ))}
+        </div>
+        {dayCourts.length === 0 && (
+          <p className="text-xs text-gray-400">
+            Chưa chọn sân cho ngày này — khi tạo buổi sẽ dùng mặc định Sân 1–3.
+          </p>
+        )}
       </section>
 
       <section className="bg-white rounded-2xl p-5 border border-teal-50 shadow-sm">

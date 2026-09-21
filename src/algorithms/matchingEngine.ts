@@ -102,12 +102,12 @@ function bestTeamSplit(four: EnrichedPlayer[]): { team1: string[]; team2: string
 }
 
 /**
- * Xác định MatchType từ danh sách 4 người.
+ * Xác định MatchType từ danh sách 4 người (quy tắc giới tính thông thường).
  * Luật:
  *   - 4 nam  → ĐÔI NAM
  *   - 4 nữ  → ĐÔI NỮ
  *   - 2 nam + 2 nữ → ĐÔI NAM NỮ
- *   - Khác → null (không hợp lệ)
+ *   - Khác → null (dùng TỰ DO ở lớp gọi)
  */
 function detectMatchType(four: EnrichedPlayer[]): MatchType | null {
   const males   = four.filter(p => p.gender === 'MALE').length;
@@ -149,15 +149,111 @@ function mixedTeamSplit(four: EnrichedPlayer[]): { team1: string[]; team2: strin
   return best;
 }
 
+export interface MatchSuggestion {
+  players: string[];
+  team1: string[];
+  team2: string[];
+  type: MatchType;
+  score: number;
+  skillDifference: number;
+  reasons: string[];
+}
+
+function playerSetKey(ids: string[]): string {
+  return [...ids].sort().join('|');
+}
+
+function isExcludedSet(ids: string[], excludePlayerSets?: string[][]): boolean {
+  if (!excludePlayerSets?.length) return false;
+  const key = playerSetKey(ids);
+  return excludePlayerSets.some(ex => playerSetKey(ex) === key);
+}
+
+/** Sinh các tổ hợp 4 người ứng viên (ưu tiên điểm chờ cao). */
+function buildCandidateFours(sorted: EnrichedPlayer[]): { four: EnrichedPlayer[]; type: MatchType; note: string }[] {
+  const malesAll = sorted.filter(p => p.gender === 'MALE');
+  const femalesAll = sorted.filter(p => p.gender === 'FEMALE');
+  const seen = new Set<string>();
+  const out: { four: EnrichedPlayer[]; type: MatchType; note: string }[] = [];
+
+  const push = (four: EnrichedPlayer[], type: MatchType, note: string) => {
+    if (four.length !== 4) return;
+    const key = playerSetKey(four.map(p => p.id));
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ four, type, note });
+  };
+
+  const top4 = sorted.slice(0, 4);
+  const top4Type = detectMatchType(top4);
+  if (top4Type) {
+    push(top4, top4Type, '4 người ưu tiên cao nhất đã thoả điều kiện giới tính');
+  }
+
+  // ĐÔI NAM NỮ — tối đa top 6 mỗi giới để giữ thứ tự ưu tiên
+  const males = malesAll.slice(0, 6);
+  const females = femalesAll.slice(0, 6);
+  for (let mi = 0; mi < males.length; mi++) {
+    for (let mj = mi + 1; mj < males.length; mj++) {
+      for (let fi = 0; fi < females.length; fi++) {
+        for (let fj = fi + 1; fj < females.length; fj++) {
+          push(
+            [males[mi], males[mj], females[fi], females[fj]],
+            'ĐÔI NAM NỮ',
+            'Chọn 2 nam + 2 nữ → ĐÔI NAM NỮ',
+          );
+        }
+      }
+    }
+  }
+
+  // ĐÔI NAM / ĐÔI NỮ — cửa sổ trượt 4 người
+  for (let i = 0; i <= malesAll.length - 4; i++) {
+    push(malesAll.slice(i, i + 4), 'ĐÔI NAM', '4 nam → ĐÔI NAM');
+  }
+  for (let i = 0; i <= femalesAll.length - 4; i++) {
+    push(femalesAll.slice(i, i + 4), 'ĐÔI NỮ', '4 nữ → ĐÔI NỮ');
+  }
+
+  // TỰ DO — cửa sổ trượt trên toàn bộ danh sách chờ
+  for (let i = 0; i <= sorted.length - 4; i++) {
+    const four = sorted.slice(i, i + 4);
+    const typed = detectMatchType(four);
+    push(four, typed ?? 'TỰ DO', typed ? `Tổ hợp → ${typed}` : 'Không đủ theo quy tắc giới tính → TỰ DO');
+  }
+
+  return out;
+}
+
+function splitTeams(
+  four: EnrichedPlayer[],
+  matchType: MatchType,
+): { team1: string[]; team2: string[]; skillDiff: number } | null {
+  if (matchType === 'ĐÔI NAM NỮ') return mixedTeamSplit(four);
+  return bestTeamSplit(four);
+}
+
+/** Đảo đội / đổi cách chia để "Xếp lại" khi chỉ còn đúng 1 tổ hợp 4 người. */
+export function reshuffleSuggestion(suggestion: MatchSuggestion): MatchSuggestion {
+  return {
+    ...suggestion,
+    team1: [...suggestion.team2],
+    team2: [...suggestion.team1],
+    reasons: [...suggestion.reasons, 'Đã đổi bên sân (Xếp lại)'],
+  };
+}
+
 export const generateMatchSuggestion = (params: {
   waitingPlayers: EnrichedPlayer[];
   activeMatches: any[];
   sessionHistory: any[];
   availableCourts: number;
   preferredMatchType?: MatchType;
+  /** Các bộ 4 người đã preview / bị loại khi bấm "Xếp lại". */
+  excludePlayerSets?: string[][];
   settings?: MatchingSettings;
-}) => {
-  const { waitingPlayers, settings: cfg } = params;
+}): MatchSuggestion | null => {
+  const { waitingPlayers, excludePlayerSets, settings: cfg } = params;
   const settings = { ...defaultSettings, ...cfg };
   const reasons: string[] = [];
 
@@ -177,64 +273,21 @@ export const generateMatchSuggestion = (params: {
 
   reasons.push('Ưu tiên người chờ lâu nhất (waitingWeight=0.60)');
 
-  // ── BƯỚC 2: Thử chọn 4 người có priorityScore cao nhất ──
-  // Nếu không thoả giới tính thì mở rộng tập ứng viên
-  let selectedFour: EnrichedPlayer[] | null = null;
-  let matchType: MatchType | null = null;
+  // ── BƯỚC 2: Duyệt ứng viên, bỏ qua các bộ đã loại (Xếp lại) ──
+  const candidates = buildCandidateFours(sorted);
+  const pick = candidates.find(c => !isExcludedSet(c.four.map(p => p.id), excludePlayerSets));
+  if (!pick) return null;
 
-  // Tách theo giới tính trong nhóm sorted
-  const malesAll   = sorted.filter(p => p.gender === 'MALE');
-  const femalesAll = sorted.filter(p => p.gender === 'FEMALE');
-
-  // Ưu tiên: thử top-4 trước
-  const top4 = sorted.slice(0, 4);
-  const top4Type = detectMatchType(top4);
-  if (top4Type) {
-    selectedFour = top4;
-    matchType = top4Type;
-    reasons.push('4 người ưu tiên cao nhất đã thoả điều kiện giới tính');
-  }
-
-  // Nếu top-4 không thoả, tìm tổ hợp khả dĩ tốt nhất ưu tiên người chờ lâu
-  if (!selectedFour) {
-    // Thử ĐÔI NAM NỮ nếu có đủ 2M + 2F
-    if (malesAll.length >= 2 && femalesAll.length >= 2) {
-      const m2 = malesAll.slice(0, 2);
-      const f2 = femalesAll.slice(0, 2);
-      selectedFour = [...m2, ...f2];
-      matchType = 'ĐÔI NAM NỮ';
-      reasons.push('Chọn 2 nam + 2 nữ chờ lâu nhất → ĐÔI NAM NỮ');
-    }
-    // Thử ĐÔI NAM
-    else if (malesAll.length >= 4) {
-      selectedFour = malesAll.slice(0, 4);
-      matchType = 'ĐÔI NAM';
-      reasons.push('4 nam chờ lâu nhất → ĐÔI NAM');
-    }
-    // Thử ĐÔI NỮ
-    else if (femalesAll.length >= 4) {
-      selectedFour = femalesAll.slice(0, 4);
-      matchType = 'ĐÔI NỮ';
-      reasons.push('4 nữ chờ lâu nhất → ĐÔI NỮ');
-    }
-    // Không tìm được tổ hợp hợp lệ
-    else {
-      return null;
-    }
-  }
-
-  if (!selectedFour || !matchType) return null;
+  const { four: selectedFour, type: matchType, note } = pick;
+  reasons.push(note);
 
   // ── BƯỚC 3: Chia đội tối ưu theo skillBalance ──
-  let split: { team1: string[]; team2: string[]; skillDiff: number };
+  const split = splitTeams(selectedFour, matchType);
+  if (!split) return null;
 
   if (matchType === 'ĐÔI NAM NỮ') {
-    const mixedSplit = mixedTeamSplit(selectedFour);
-    if (!mixedSplit) return null;
-    split = mixedSplit;
     reasons.push('Mỗi đội 1 nam + 1 nữ, chia skill cân bằng nhất');
   } else {
-    split = bestTeamSplit(selectedFour);
     reasons.push(`Chia đội: skill diff = ${split.skillDiff}`);
   }
 
