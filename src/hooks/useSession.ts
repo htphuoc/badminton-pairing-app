@@ -29,7 +29,9 @@ export function useSession() {
   const createSession = (courtNumbers: number[], durationMinutes: number, selectedPlayerIds: string[]) => {
     const players = StorageService.getPlayers();
     const settings = StorageService.getSettings();
-    const now = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const sorted = [...courtNumbers].sort((a, b) => a - b);
 
     const sessionPlayers: SessionPlayer[] = players
@@ -43,7 +45,7 @@ export function useSession() {
         attendance: 'WAITING' as AttendanceStatus,
         matchesPlayed: 0,
         totalMinutesPlayed: 0,
-        waitingSince: now,
+        waitingSince: nowIso,
       }));
 
     const courtMeta: Record<string, CourtMeta> = Object.fromEntries(
@@ -52,15 +54,15 @@ export function useSession() {
         {
           isSupplemental: false,
           plannedMinutes: durationMinutes,
-          startedAt: now,
+          startedAt: nowIso,
         },
       ]),
     );
 
     const newSession: Session = {
       id: uuidv4(),
-      date: now.split('T')[0],
-      startTime: now,
+      date: localDateStr,
+      startTime: nowIso,
       numberOfCourts: sorted.length,
       courtNumbers: sorted,
       initialCourtNumbers: sorted,
@@ -68,15 +70,15 @@ export function useSession() {
       courtFees: Object.fromEntries(
         sorted.map(court => [String(court), settings.courtFeeFixedPerHour ?? settings.courtFeePerHour]),
       ),
-      shuttleCount: 0,
+      shuttleCount: 15,
       plannedDurationMinutes: durationMinutes,
       durationMinutes,
       players: sessionPlayers,
       matches: [],
       costs: settings,
-      status: 'RUNNING',
-      createdAt: now,
-      updatedAt: now,
+      status: 'PLANNED',
+      createdAt: nowIso,
+      updatedAt: nowIso,
     };
     save(newSession);
   };
@@ -88,6 +90,7 @@ export function useSession() {
       status: 'FINISHED',
       endTime: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      shuttleCount: currentSession.shuttleCount ?? 15,
     });
     setCurrentSession(null);
   };

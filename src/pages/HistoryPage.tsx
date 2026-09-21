@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Banknote, ChevronRight, Save, Volleyball, X } from 'lucide-react';
+import { Banknote, ChevronRight, Save, Volleyball, X, Mars, Venus } from 'lucide-react';
 import { StorageService } from '../storage/storage';
 import type { Session, Player, SessionPlayer } from '../models/types';
 import { calcSessionCosts, type CostBreakdown } from '../utils/costCalc';
@@ -25,7 +25,7 @@ export default function HistoryPage() {
   useEffect(() => {
     const all = StorageService.getSessions()
       .filter(s => s.status === 'FINISHED')
-      .sort((a, b) => b.date.localeCompare(a.date));
+      .sort((a, b) => (b.endTime || b.date).localeCompare(a.endTime || a.date));
     setSessions(all);
     setPlayers(StorageService.getPlayers());
   }, []);
@@ -34,7 +34,7 @@ export default function HistoryPage() {
     const all = StorageService.getSessions().map(item => (item.id === s.id ? s : item));
     StorageService.saveSessions(all);
     setSessions(
-      all.filter(item => item.status === 'FINISHED').sort((a, b) => b.date.localeCompare(a.date)),
+      all.filter(item => item.status === 'FINISHED').sort((a, b) => (b.endTime || b.date).localeCompare(a.endTime || a.date)),
     );
     setSelected(s);
   };
@@ -44,7 +44,7 @@ export default function HistoryPage() {
 
   return (
     <div className="pb-20 space-y-3">
-      <h2 className="text-xl font-extrabold uppercase">BẢNG CHIA TIỀN</h2>
+      <h2 className="text-xl font-extrabold uppercase">BẢNG TỔNG KẾT</h2>
 
       {sessions.length === 0 && (
         <div className="bg-white rounded-2xl p-8 text-center text-gray-400">
@@ -54,7 +54,9 @@ export default function HistoryPage() {
 
       {sessions.map(s => {
         const costs = calc(s);
-        const dateStr = new Date(s.date + 'T00:00:00').toLocaleDateString('vi-VN');
+        const endStr = s.endTime ? new Date(s.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+        const displayDate = s.endTime ? new Date(s.endTime) : new Date(s.date + 'T00:00:00');
+        const dateStr = displayDate.toLocaleDateString('vi-VN') + (endStr ? ` - ${endStr}` : '');
         return (
           <button
             key={s.id}
@@ -99,71 +101,111 @@ interface MoneySheetProps {
 function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) {
   const setShuttle = (value: number) => update({ ...session, shuttleCount: value });
 
-  const dateStr = new Date(session.date + 'T00:00:00').toLocaleDateString('vi-VN');
+  const endStr = session.endTime ? new Date(session.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+  const displayDate = session.endTime ? new Date(session.endTime) : new Date(session.date + 'T00:00:00');
+  const dateStr = displayDate.toLocaleDateString('vi-VN') + (endStr ? ` - ${endStr}` : '');
   const pricePerShuttle = session.costs.shuttleFee ?? 28000;
 
   const genderOf = (p: SessionPlayer) =>
     p.gender ?? players.find(x => x.id === p.playerId)?.gender ?? 'MALE';
 
+  // Tính tiền mẫu cho 1 nam / 1 nữ
+  const costMale = calc.owed({ playerId: 'M', playerName: 'M', matchesPlayed: 1, totalMinutesPlayed: 0, gender: 'MALE', attendance: 'PRESENT' } as SessionPlayer);
+  const costFemale = calc.owed({ playerId: 'F', playerName: 'F', matchesPlayed: 1, totalMinutesPlayed: 0, gender: 'FEMALE', attendance: 'PRESENT' } as SessionPlayer);
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/55 flex items-end sm:items-center justify-center">
-      <div className="bg-white w-full max-w-md max-h-[95vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl">
+      <div className="bg-gray-50 w-full max-w-md max-h-[95vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl pb-6">
         <header className="bg-primary text-white p-5 flex justify-between items-start">
           <div>
-            <p className="text-xs font-bold tracking-widest text-teal-100">BẢNG CHIA TIỀN</p>
-            <h3 className="text-xl font-extrabold">{dateStr}</h3>
-            <p className="text-xs text-teal-100 mt-0.5">
-              {session.numberOfCourts} sân · {session.matches.length} trận · {calc.participants.length}{' '}
-              người
+            <p className="text-xs font-bold tracking-widest text-teal-100">BẢNG TỔNG KẾT</p>
+            <h3 className="text-xl font-extrabold leading-tight">{dateStr}</h3>
+            <p className="text-xs text-teal-100 mt-1">
+              {session.numberOfCourts} sân · {session.matches.length} trận · {calc.participants.length} người
             </p>
           </div>
-          <button onClick={close}>
-            <X size={22} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => update(session)}
+              className="border border-white/60 hover:bg-white/10 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition"
+            >
+              <Save size={16} /> LƯU
+            </button>
+            <button onClick={close} className="hover:text-teal-200 transition">
+              <X size={24} />
+            </button>
+          </div>
         </header>
 
-        <div className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <CostCard icon={<Banknote />} label="Tiền sân" value={calc.courtCost} />
-            <CostCard icon={<Volleyball />} label="Tiền cầu" value={calc.shuttleCost} />
-          </div>
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-3 gap-2">
+            <CostCard icon={<Banknote size={18} />} label="Tiền sân" value={calc.courtCost} />
 
-          <div className="bg-teal-50 rounded-2xl p-3">
-            <label className="text-xs font-bold block">
-              SỐ QUẢ CẦU ĐÃ DÙNG
+            <div className="bg-white rounded-2xl p-2 shadow-sm border border-teal-100 flex flex-col items-center justify-center">
+              <label className="text-[10px] font-extrabold block text-primary uppercase text-center mb-1.5 leading-tight">
+                Số quả cầu
+              </label>
               <input
                 type="number"
                 min="0"
                 value={session.shuttleCount || 0}
                 onChange={e => setShuttle(+e.target.value || 0)}
-                className="mt-1 w-full rounded-lg p-2 border border-teal-100 text-base"
+                className="w-14 text-center rounded-md px-1 py-1 border border-teal-200 text-sm font-bold text-primary focus:outline-none focus:border-teal-400 bg-teal-50/50"
               />
-              <span className="text-gray-400 font-normal">
+              <div className="text-[9px] text-gray-400 mt-1.5 font-medium whitespace-nowrap">
                 {pricePerShuttle.toLocaleString('vi-VN')}đ/quả
-              </span>
-            </label>
+              </div>
+            </div>
+
+            <CostCard icon={<Volleyball size={18} />} label="Tiền cầu" value={calc.shuttleCost} />
           </div>
 
-          <div className="border-2 border-primary/30 rounded-2xl p-3 flex items-center justify-between gap-2">
-            <div>
-              <p className="text-xs font-bold text-primary">TỔNG CỘNG</p>
-              <b className="text-3xl text-primary">{money(calc.total)}</b>
-              <p className="text-[11px] text-gray-400 mt-0.5">Tự động lưu khi nhập</p>
+          <div className="bg-white border border-teal-100 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-bold text-primary uppercase">TỔNG CỘNG</p>
+                <b className="text-3xl text-primary">{money(calc.total)}</b>
+                <p className="text-[11px] text-gray-400 mt-1">Tự động lưu khi nhập</p>
+              </div>
+              <img
+                src="/payment-qr.png"
+                className="w-20 h-20 rounded-lg object-contain"
+                alt="Mã QR thanh toán"
+              />
             </div>
-            <img
-              src="/payment-qr.png"
-              className="w-24 h-24 rounded-lg object-cover"
-              alt="Mã QR thanh toán"
-            />
+
+            <div className="rounded-xl p-3 border border-gray-200 flex flex-col items-center">
+              <div className="text-xs font-extrabold text-center uppercase mb-3 text-gray-500">CHIA TIỀN</div>
+              <div className="flex justify-center gap-3 mb-4 w-full">
+                <div className="flex items-center justify-between border border-blue-200 bg-blue-50/50 rounded px-2 py-1.5 flex-1 max-w-[140px]">
+                  <span className="text-blue-600 font-extrabold text-sm">NAM:</span>
+                  <span className="font-bold text-primary">{money(costMale)}</span>
+                  <div className="bg-blue-500 text-white rounded-[4px] w-5 h-5 flex items-center justify-center ml-1">
+                    <Mars size={14} strokeWidth={3} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border border-pink-200 bg-pink-50/50 rounded px-2 py-1.5 flex-1 max-w-[140px]">
+                  <span className="text-pink-600 font-extrabold text-sm">NỮ:</span>
+                  <span className="font-bold text-primary">{money(costFemale)}</span>
+                  <div className="bg-pink-500 text-white rounded-[4px] w-5 h-5 flex items-center justify-center ml-1">
+                    <Venus size={14} strokeWidth={3} />
+                  </div>
+                </div>
+              </div>
+              <div className="text-center w-full">
+                <div className="text-[10px] text-gray-400 font-medium uppercase mb-0.5">CHUYỂN KHOẢN CHO:</div>
+                <div className="text-sm font-extrabold text-primary uppercase">NGUYỄN THỊ HỒNG DUNG</div>
+              </div>
+            </div>
           </div>
 
           <CourtTimeSection session={session} />
 
-          <div className="border border-teal-100 rounded-2xl overflow-hidden">
-            <div className="grid grid-cols-[1fr_40px_44px_76px] p-3 bg-teal-50 text-xs font-extrabold text-primary">
+          <div className="bg-white border border-teal-100 rounded-2xl overflow-hidden shadow-sm mb-4">
+            <div className="grid grid-cols-[1fr_48px_48px_80px] px-4 py-3 border-b border-teal-100 text-[11px] font-extrabold text-primary uppercase">
               <span>TÊN</span>
-              <span>TRẬN</span>
-              <span>PHÚT</span>
+              <span className="text-center">TRẬN</span>
+              <span className="text-center">PHÚT</span>
               <span className="text-right">SỐ TIỀN</span>
             </div>
             {calc.participants.length === 0 ? (
@@ -172,33 +214,25 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
               calc.participants.map(p => (
                 <div
                   key={p.playerId}
-                  className="grid grid-cols-[1fr_40px_44px_76px] p-3 border-t border-teal-50 text-sm items-center gap-1"
+                  className="grid grid-cols-[1fr_48px_48px_80px] px-4 py-3 border-b border-gray-100 last:border-0 text-sm items-center gap-1 hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <GenderAvatar gender={genderOf(p)} size={28} />
                     <div className="min-w-0">
                       <b className="block truncate">{p.playerName || 'Người chơi'}</b>
-                      <small className="text-gray-400">
+                      <small className="text-[10px] text-gray-400">
                         {p.skillLevel ?? '—'} ·{' '}
                         {p.memberType === 'VÃNG LAI' ? 'Vãng lai' : 'Cố định'}
                       </small>
                     </div>
                   </div>
-                  <span className="text-gray-600">{p.matchesPlayed}</span>
-                  <span className="text-gray-600">{p.totalMinutesPlayed}</span>
+                  <span className="text-gray-600 text-center font-medium">{p.matchesPlayed}</span>
+                  <span className="text-gray-600 text-center font-medium">{p.totalMinutesPlayed}</span>
                   <b className="text-primary text-right">{money(calc.owed(p))}</b>
                 </div>
               ))
             )}
           </div>
-
-          <button
-            onClick={() => update(session)}
-            className="w-full rounded-xl bg-primary text-white py-3 font-extrabold"
-          >
-            <Save className="inline mr-2" size={17} />
-            LƯU CHI PHÍ
-          </button>
         </div>
       </div>
     </div>
@@ -207,10 +241,10 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
 
 function CostCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <div className="border border-teal-100 rounded-2xl p-2 text-center">
-      <span className="text-primary flex justify-center">{icon}</span>
-      <p className="text-[11px] font-bold mt-0.5">{label}</p>
-      <b className="text-primary text-sm">{money(value)}</b>
+    <div className="bg-white border border-teal-100 rounded-2xl p-2 shadow-sm flex flex-col items-center justify-center">
+      <div className="text-primary mb-1">{icon}</div>
+      <p className="text-[10px] font-extrabold text-primary uppercase text-center mb-0.5 leading-tight">{label}</p>
+      <b className="text-primary text-sm whitespace-nowrap">{money(value)}</b>
     </div>
   );
 }
@@ -223,11 +257,11 @@ function CourtTimeSection({ session }: { session: Session }) {
   if (!courts.length) return null;
 
   return (
-    <div className="border border-teal-100 rounded-2xl overflow-hidden">
-      <div className="p-3 bg-teal-50">
-        <p className="text-xs font-extrabold text-primary">CHI TIẾT GIỜ SÂN / TRẬN</p>
+    <div className="bg-white border border-teal-100 rounded-2xl overflow-hidden shadow-sm">
+      <div className="p-4 border-b border-gray-100">
+        <p className="text-xs font-extrabold text-primary uppercase">CHI TIẾT GIỜ SÂN / TRẬN</p>
       </div>
-      <div className="divide-y divide-teal-50">
+      <div className="divide-y divide-gray-100">
         {courts.map(courtNum => {
           const key = String(courtNum);
           const meta = session.courtMeta?.[key];

@@ -32,17 +32,17 @@ export default function App() {
         </main>
 
         <nav className="fixed bottom-0 w-full bg-white border-t border-teal-100 flex justify-around p-3 z-10 max-w-md mx-auto left-0 right-0 rounded-t-2xl shadow-lg">
-          <NavLink to="/" className={({ isActive }) => `flex flex-col items-center ${isActive ? 'text-primary font-bold' : 'text-gray-400'}`}>
-            <Users size={24} />
-            <span className="text-xs mt-1">Thành viên</span>
-          </NavLink>
           <NavLink to="/session" className={({ isActive }) => `flex flex-col items-center ${isActive ? 'text-primary font-bold' : 'text-gray-400'}`}>
             <PlaySquare size={24} />
             <span className="text-xs mt-1">Sân</span>
           </NavLink>
           <NavLink to="/history" className={({ isActive }) => `flex flex-col items-center ${isActive ? 'text-primary font-bold' : 'text-gray-400'}`}>
             <Clock size={24} />
-            <span className="text-xs mt-1">Lịch sử</span>
+            <span className="text-xs mt-1">Tổng kết</span>
+          </NavLink>
+          <NavLink to="/" className={({ isActive }) => `flex flex-col items-center ${isActive ? 'text-primary font-bold' : 'text-gray-400'}`}>
+            <Users size={24} />
+            <span className="text-xs mt-1">Thành viên</span>
           </NavLink>
           <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center ${isActive ? 'text-primary font-bold' : 'text-gray-400'}`}>
             <Settings size={24} />
