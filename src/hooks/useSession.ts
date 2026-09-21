@@ -92,7 +92,41 @@ export function useSession() {
     setCurrentSession(null);
   };
 
-  /** Bổ sung sân: tự lấy đơn giá vãng lai; thời gian bổ sung (mặc định 60p). */
+  /** Thêm người chưa có trong buổi vào hàng chờ. */
+  const addPlayersToSession = (playerIds: string[]) => {
+    if (!currentSession || !playerIds.length) return;
+    const roster = StorageService.getPlayers();
+    const now = new Date().toISOString();
+    const next = currentSession.players.map(p => ({ ...p }));
+
+    for (const id of playerIds) {
+      const existing = next.find(p => p.playerId === id);
+      if (existing) {
+        if (existing.attendance === 'ABSENT') {
+          existing.attendance = 'WAITING';
+          existing.waitingSince = now;
+        }
+        continue;
+      }
+      const player = roster.find(p => p.id === id);
+      if (!player) continue;
+      next.push({
+        playerId: player.id,
+        playerName: player.name,
+        gender: player.gender,
+        skillLevel: player.skillLevel,
+        memberType: player.memberType,
+        attendance: 'WAITING',
+        matchesPlayed: 0,
+        totalMinutesPlayed: 0,
+        waitingSince: now,
+      });
+    }
+
+    save({ ...currentSession, players: next, updatedAt: now });
+  };
+
+  /** Thêm sân: tự lấy đơn giá vãng lai; thời gian bổ sung (mặc định 60p). */
   const addCourt = (courtNumber: number, supplementalMinutes: number) => {
     if (!currentSession || currentSession.courtNumbers.includes(courtNumber)) return;
     const settings = currentSession.costs;
@@ -300,6 +334,7 @@ export function useSession() {
     createSession,
     endSession,
     addCourt,
+    addPlayersToSession,
     returnCourt,
     autoMatch,
     startManualMatch,

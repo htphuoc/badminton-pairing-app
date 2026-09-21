@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Clock3, MapPin, Play, Plus, Shuffle, X } from 'lucide-react';
+import { Check, Clock3, MapPin, Play, Plus, Shuffle, UserPlus, X } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { usePlayers } from '../hooks/usePlayers';
 import BadmintonCourt from '../components/BadmintonCourt';
@@ -37,6 +37,7 @@ export default function SessionPage() {
     startManualMatch,
     endMatch,
     addCourt,
+    addPlayersToSession,
     returnCourt,
   } = useSession();
   const { players } = usePlayers();
@@ -47,6 +48,8 @@ export default function SessionPage() {
   const [modal, setModal] = useState<{ court: string; manual: boolean } | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
+  const [addingMembers, setAddingMembers] = useState(false);
+  const [memberPick, setMemberPick] = useState<string[]>([]);
   const [newCourt, setNewCourt] = useState(4);
   const [addMins, setAddMins] = useState(60);
 
@@ -193,6 +196,10 @@ export default function SessionPage() {
   });
   const waiting = currentSession.players.filter(p => p.attendance === 'WAITING');
   const playing = currentSession.matches.filter(m => m.status === 'PLAYING');
+  const joinedIds = new Set(
+    currentSession.players.filter(p => p.attendance !== 'ABSENT').map(p => p.playerId),
+  );
+  const outsidePlayers = players.filter(p => !joinedIds.has(p.id));
 
   const canReturnCourt = (courtNum: number, hasActiveMatch: boolean) => {
     const meta = currentSession.courtMeta?.[String(courtNum)];
@@ -221,19 +228,31 @@ export default function SessionPage() {
         </button>
       </header>
 
-      <button
-        onClick={() => {
-          setNewCourt(
-            Array.from({ length: 16 }, (_, i) => i + 1).find(c => !configured.includes(c)) || 1,
-          );
-          setAddMins(60);
-          setAdding(true);
-        }}
-        className="w-full border border-primary text-primary rounded-xl py-3 font-bold"
-      >
-        <Plus className="inline mr-1" size={17} />
-        + BỔ SUNG SÂN
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => {
+            setMemberPick([]);
+            setAddingMembers(true);
+          }}
+          className="border border-primary text-primary rounded-xl py-3 px-1 font-extrabold text-[12px] leading-tight whitespace-nowrap"
+        >
+          <UserPlus className="inline mr-1" size={17} />
+          THÊM THÀNH VIÊN
+        </button>
+        <button
+          onClick={() => {
+            setNewCourt(
+              Array.from({ length: 16 }, (_, i) => i + 1).find(c => !configured.includes(c)) || 1,
+            );
+            setAddMins(60);
+            setAdding(true);
+          }}
+          className="border border-primary text-primary rounded-xl py-3 px-1 font-extrabold text-[12px] leading-tight whitespace-nowrap"
+        >
+          <Plus className="inline mr-1" size={17} />
+          THÊM SÂN
+        </button>
+      </div>
 
       {configured.map(c => {
         const activeMatch = playing.find(x => x.courtId === String(c));
@@ -261,11 +280,10 @@ export default function SessionPage() {
             {activeMatch ? (
               <>
                 <BadmintonCourt
-                  playerTopLeft={name(activeMatch.team1[0])}
-                  playerBottomLeft={name(activeMatch.team1[1])}
-                  playerTopRight={name(activeMatch.team2[0])}
-                  playerBottomRight={name(activeMatch.team2[1])}
-                  matchType={activeMatch.type}
+                  topLeft={resolvePlayer(activeMatch.team1[0])}
+                  bottomLeft={resolvePlayer(activeMatch.team1[1])}
+                  topRight={resolvePlayer(activeMatch.team2[0])}
+                  bottomRight={resolvePlayer(activeMatch.team2[1])}
                   startTime={activeMatch.startTime}
                   onEndMatch={() => endMatch(activeMatch.id)}
                 />
@@ -366,11 +384,87 @@ export default function SessionPage() {
         )}
       </section>
 
-      {/* Modal bổ sung sân */}
+      {/* Thêm thành viên chưa có trong buổi */}
+      {addingMembers && (
+        <div className="fixed inset-0 bg-black/50 z-50 grid place-items-end sm:place-items-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[88vh] flex flex-col">
+            <div className="flex justify-between items-start p-4 border-b border-teal-50">
+              <div>
+                <h3 className="font-extrabold uppercase">THÊM THÀNH VIÊN</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Chọn người chưa có trong buổi</p>
+              </div>
+              <button onClick={() => setAddingMembers(false)} aria-label="Đóng">
+                <X size={20} />
+              </button>
+            </div>
+            {outsidePlayers.length === 0 ? (
+              <p className="p-6 text-center text-gray-400 text-sm">
+                Tất cả thành viên đã có trong buổi.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 p-3 overflow-y-auto">
+                {outsidePlayers.map(p => {
+                  const selected = memberPick.includes(p.id);
+                  const matches = careerMatchCount(p.id, allSessions);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() =>
+                        setMemberPick(x =>
+                          x.includes(p.id) ? x.filter(i => i !== p.id) : [...x, p.id],
+                        )
+                      }
+                      className={`relative text-left rounded-xl border p-2 flex gap-2 items-start ${
+                        selected ? 'border-primary bg-teal-50/60' : 'border-teal-50'
+                      }`}
+                    >
+                      {selected && (
+                        <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary text-white grid place-items-center">
+                          <Check size={12} />
+                        </span>
+                      )}
+                      <GenderAvatar gender={p.gender} size={36} />
+                      <div className="min-w-0 pr-4">
+                        <b className="text-sm block truncate">{p.name}</b>
+                        <span className="text-[11px] text-gray-500 font-bold">
+                          {p.skillLevel} · {matches}tr
+                        </span>
+                        <span className="block text-[10px] text-amber-700 font-bold">
+                          {memberLabel(p.memberType)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2 p-3 border-t border-teal-50">
+              <button
+                onClick={() => setAddingMembers(false)}
+                className="border border-gray-300 rounded-xl py-3 font-bold"
+              >
+                Huỷ
+              </button>
+              <button
+                disabled={!memberPick.length}
+                onClick={() => {
+                  addPlayersToSession(memberPick);
+                  setAddingMembers(false);
+                }}
+                className="bg-primary disabled:bg-gray-300 text-white rounded-xl py-3 font-bold"
+              >
+                THÊM ({memberPick.length})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal thêm sân */}
       {adding && (
         <div className="fixed inset-0 bg-black/50 z-50 grid place-items-center p-4">
           <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-3">
-            <h3 className="font-extrabold uppercase">BỔ SUNG SÂN</h3>
+            <h3 className="font-extrabold uppercase">THÊM SÂN</h3>
             <label className="block text-sm font-bold">
               Sân
               <select
