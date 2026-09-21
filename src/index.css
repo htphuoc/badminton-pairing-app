@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #14b8a6;
+  --color-secondary: #0f766e;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(180deg, #f0fdfa 0, #f8fafc 32rem); 
+  color: #172033;
+}
+
+button { cursor: pointer; }
+
+/* ──────────────────────────────────────────────
+   BADMINTON COURT — SVG-style via CSS
+   Reference image: green court, black net, white lines
+   Layout (landscape orientation card):
+   ┌──────────────────────────────────────────┐
+   │ ┃ ┌──────┐ ┃        ┃ ┌──────┐ ┃        │  ← back boundary + short service box corners
+   │ ┃ │      │ ┃        ┃ │      │ ┃        │
+   │ ┃ └──────┘ ┃        ┃ └──────┘ ┃        │
+   │ ┃──────────NET───────────────── ┃        │  ← thick black net
+   │ ┃ ┌──────┐ ┃        ┃ ┌──────┐ ┃        │
+   │ ┃ │      │ ┃        ┃ │      │ ┃        │
+   │ ┃ └──────┘ ┃        ┃ └──────┘ ┃        │
+   └──────────────────────────────────────────┘
+────────────────────────────────────────────── */
+
+.badminton-court {
+  position: relative;
+  /* Tỷ lệ sân đôi = 13.4m × 6.1m ≈ 2.2:1 — dùng aspect-ratio */
+  width: 100%;
+  aspect-ratio: 2.2 / 1;
+  min-height: 150px;
+  max-height: 220px;
+  margin: 0 12px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  overflow: hidden;
+
+  /* Nền xanh lá sân */
+  background-color: #2d7a3a;
+
+  /* Dùng SVG inline via background để vẽ tất cả đường kẻ */
+  /* Tất cả tọa độ % tương đối với width/height của .badminton-court */
+  /*
+    Cấu trúc đường kẻ sân cầu lông đôi (theo tỷ lệ thực):
+    - Biên ngoài: 5% inset mỗi cạnh
+    - Lưới (net): y = 50% (đường ngang giữa, màu đen đậm)
+    - Đường giao cầu (service line): y = 24% và y = 76%
+    - Đường back boundary đôi: y = 8% và y = 92%
+    - Đường dọc giữa (center): x = 50%
+    - Đường biên dọc trong (doubles sideline): x = 8% và x = 92%
+  */
+}
+
+/* Kẻ sân bằng CSS pseudo-elements và box-shadow — approach SVG trong CSS */
+/* Ta dùng SVG URI encode nhúng vào background-image */
+
+.court-svg-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.court-svg-wrapper svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Tên người chơi ở 4 góc */
+.court-name {
+  position: absolute;
+  z-index: 10;
+  max-width: 42%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 800;
+  background: rgba(0,0,0,0.55);
+  padding: .22rem .5rem;
+  border-radius: .4rem;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+.top-left    { top: 8px;    left: 8px;  }
+.bottom-left { bottom: 8px; left: 8px;  }
+.top-right   { top: 8px;    right: 8px; }
+.bottom-right{ bottom: 8px; right: 8px; }
+
+/* Match type badge */
+.court-type-badge {
+  position: absolute;
+  z-index: 12;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  padding: .18rem .5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Timer bar bên dưới sân, bên trong card */
+.court-timer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px 4px;
+  background: #1e6b2a;
+  color: #d1fae5;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Nút Kết thúc trận bên trong card sân */
+.court-end-btn {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 6px 12px 10px;
+  background: #ef4444;
+  color: white;
+  font-weight: 800;
+  font-size: 0.82rem;
+  padding: 10px 0;
+  border-radius: 10px;
+  border: none;
+  text-align: center;
+  min-height: 44px;
+  letter-spacing: 0.03em;
+}
+.court-end-btn:active { background: #b91c1c; }

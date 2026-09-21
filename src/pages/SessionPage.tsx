@@ -1,0 +1,515 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Check, Clock3, MapPin, Play, Plus, Shuffle, X } from 'lucide-react';
+import { useSession } from '../hooks/useSession';
+import { usePlayers } from '../hooks/usePlayers';
+import BadmintonCourt from '../components/BadmintonCourt';
+import GenderAvatar from '../components/GenderAvatar';
+import { StorageService } from '../storage/storage';
+import { careerMatchCount } from '../utils/costCalc';
+import type { Gender, MemberType, SkillLevel } from '../models/types';
+
+const label = (m: number) =>
+  `${Math.floor(m / 60)}h ${m % 60 > 0 ? (m % 60) + 'm' : ''}`.trim() || '0m';
+
+function MatchTypeBadge({ type }: { type: string }) {
+  const colors: Record<string, string> = {
+    'ĐÔI NAM': 'bg-blue-600 text-white',
+    'ĐÔI NỮ': 'bg-pink-600 text-white',
+    'ĐÔI NAM NỮ': 'bg-amber-500 text-white',
+  };
+  return (
+    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${colors[type] ?? 'bg-gray-400 text-white'}`}>
+      {type}
+    </span>
+  );
+}
+
+function memberLabel(t?: MemberType) {
+  return t === 'VÃNG LAI' ? 'Vãng lai' : 'Cố định';
+}
+
+export default function SessionPage() {
+  const {
+    currentSession,
+    createSession,
+    endSession,
+    autoMatch,
+    startManualMatch,
+    endMatch,
+    addCourt,
+    returnCourt,
+  } = useSession();
+  const { players } = usePlayers();
+
+  const [courts, setCourts] = useState([1, 2, 3]);
+  const [mins, setMins] = useState(120);
+  const [ids, setIds] = useState<string[]>([]);
+  const [modal, setModal] = useState<{ court: string; manual: boolean } | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [newCourt, setNewCourt] = useState(4);
+  const [addMins, setAddMins] = useState(60);
+
+  const allSessions = useMemo(() => StorageService.getSessions(), [currentSession, players]);
+
+  useEffect(() => {
+    if (players.length && !ids.length) {
+      setIds(players.filter(p => p.memberType === 'CỐ ĐỊNH').map(p => p.id));
+    }
+  }, [players]);
+
+  const toggle = (id: string) =>
+    setIds(x => (x.includes(id) ? x.filter(i => i !== id) : [...x, id]));
+
+  const name = (id: string) =>
+    players.find(p => p.id === id)?.name ||
+    currentSession?.players.find(p => p.playerId === id)?.playerName ||
+    'Người chơi';
+
+  const resolvePlayer = (playerId: string) => {
+    const live = players.find(p => p.id === playerId);
+    const snap = currentSession?.players.find(p => p.playerId === playerId);
+    return {
+      gender: (live?.gender ?? snap?.gender ?? 'MALE') as Gender,
+      skillLevel: (live?.skillLevel ?? snap?.skillLevel ?? 'TB') as SkillLevel,
+      memberType: (live?.memberType ?? snap?.memberType ?? 'CỐ ĐỊNH') as MemberType,
+      name: live?.name ?? snap?.playerName ?? 'Người chơi',
+    };
+  };
+
+  /* ── TẠO BUỔI CHƠI ── */
+  if (!currentSession) {
+    return (
+      <div className="pb-24 space-y-4">
+        <h2 className="text-xl font-extrabold uppercase">TẠO BUỔI CHƠI</h2>
+
+        <section className="bg-white rounded-2xl p-4 space-y-4">
+          <div className="flex justify-between font-bold">
+            <span>
+              <Clock3 className="inline mr-2 text-primary" size={18} />
+              Thời gian
+            </span>
+            <b className="text-primary">{label(mins)}</b>
+          </div>
+          <input
+            className="w-full accent-primary"
+            type="range"
+            min="15"
+            max="360"
+            step="15"
+            value={mins}
+            onChange={e => setMins(+e.target.value)}
+          />
+
+          <b>
+            <MapPin className="inline mr-2 text-primary" size={18} />
+            Chọn sân
+          </b>
+          <div className="grid grid-cols-4 gap-2">
+            {Array.from({ length: 16 }, (_, i) => i + 1).map(c => (
+              <button
+                key={c}
+                onClick={() =>
+                  setCourts(x => (x.includes(c) ? x.filter(i => i !== c) : [...x, c]))
+                }
+                className={`rounded-xl py-2 text-sm font-bold ${
+                  courts.includes(c) ? 'bg-primary text-white' : 'border border-teal-100'
+                }`}
+              >
+                Sân {c}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Compact member grid */}
+        <section className="bg-white rounded-2xl overflow-hidden">
+          <div className="p-3 flex justify-between border-b border-teal-50 items-center">
+            <b className="text-sm">THÀNH VIÊN THAM GIA</b>
+            <div className="flex gap-2">
+              <button
+                onClick={() =>
+                  setIds(players.filter(p => p.memberType === 'CỐ ĐỊNH').map(p => p.id))
+                }
+                className="text-xs text-primary font-bold"
+              >
+                Cố định
+              </button>
+              <button onClick={() => setIds([])} className="text-xs text-gray-400 font-bold">
+                Bỏ chọn
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 p-2">
+            {players.map(p => {
+              const selected = ids.includes(p.id);
+              const matches = careerMatchCount(p.id, allSessions);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => toggle(p.id)}
+                  className={`relative text-left rounded-xl border p-2 flex gap-2 items-start ${
+                    selected ? 'border-primary bg-teal-50/60' : 'border-teal-50'
+                  }`}
+                >
+                  {selected && (
+                    <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary text-white grid place-items-center">
+                      <Check size={12} />
+                    </span>
+                  )}
+                  <GenderAvatar gender={p.gender} size={36} />
+                  <div className="min-w-0 pr-4">
+                    <b className="text-sm block truncate">{p.name}</b>
+                    <span className="text-[11px] text-gray-500 font-bold">
+                      {p.skillLevel} · {matches}tr
+                    </span>
+                    <span className="block text-[10px] text-amber-700 font-bold">
+                      {memberLabel(p.memberType)}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <button
+          disabled={ids.length < 4 || !courts.length}
+          onClick={() => createSession(courts, mins, ids)}
+          className="w-full bg-primary disabled:bg-gray-300 text-white rounded-2xl py-4 font-extrabold"
+        >
+          <Play className="inline mr-2" size={18} />
+          BẮT ĐẦU BUỔI CHƠI
+        </button>
+      </div>
+    );
+  }
+
+  /* ── BUỔI ĐANG CHƠI ── */
+  const configured = currentSession.courtNumbers || [];
+  const initialCourts = currentSession.initialCourtNumbers ?? configured.filter(c => {
+    const meta = currentSession.courtMeta?.[String(c)];
+    return !meta?.isSupplemental;
+  });
+  const waiting = currentSession.players.filter(p => p.attendance === 'WAITING');
+  const playing = currentSession.matches.filter(m => m.status === 'PLAYING');
+
+  const canReturnCourt = (courtNum: number, hasActiveMatch: boolean) => {
+    const meta = currentSession.courtMeta?.[String(courtNum)];
+    const isSupplemental = meta?.isSupplemental === true || !initialCourts.includes(courtNum);
+    // Chỉ sân bổ sung, chưa trả, và không còn trận đang chơi trên sân đó
+    return isSupplemental && !meta?.returnedAt && !hasActiveMatch;
+  };
+
+  return (
+    <div className="pb-24 space-y-4">
+      <header className="bg-primary text-white rounded-2xl p-4 flex justify-between items-start">
+        <div>
+          <small className="text-teal-100 font-bold tracking-wide">ĐANG CHƠI</small>
+          <b className="block text-lg">
+            {new Date(currentSession.date).toLocaleDateString('vi-VN')}
+          </b>
+          <small className="text-teal-100">
+            {configured.length} sân · {label(currentSession.plannedDurationMinutes || 120)}
+          </small>
+        </div>
+        <button
+          onClick={endSession}
+          className="border border-white/60 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap"
+        >
+          KẾT THÚC BUỔI
+        </button>
+      </header>
+
+      <button
+        onClick={() => {
+          setNewCourt(
+            Array.from({ length: 16 }, (_, i) => i + 1).find(c => !configured.includes(c)) || 1,
+          );
+          setAddMins(60);
+          setAdding(true);
+        }}
+        className="w-full border border-primary text-primary rounded-xl py-3 font-bold"
+      >
+        <Plus className="inline mr-1" size={17} />
+        + BỔ SUNG SÂN
+      </button>
+
+      {configured.map(c => {
+        const activeMatch = playing.find(x => x.courtId === String(c));
+        const rate =
+          currentSession.courtFees?.[c] ||
+          currentSession.costs.courtFeeFixedPerHour ||
+          currentSession.costs.courtFeePerHour;
+        const courtFee = rate.toLocaleString('vi-VN');
+        const returnEnabled = canReturnCourt(c, !!activeMatch);
+        const returned = !!currentSession.courtMeta?.[String(c)]?.returnedAt;
+
+        return (
+          <article
+            key={c}
+            className="bg-white rounded-2xl border border-teal-100 overflow-hidden shadow-sm"
+          >
+            <div className="px-4 py-2.5 flex justify-between items-center border-b border-teal-50">
+              <b className="text-primary font-extrabold tracking-wide">SÂN {c}</b>
+              <div className="flex items-center gap-2">
+                {activeMatch && <MatchTypeBadge type={activeMatch.type} />}
+                <small className="text-gray-400 text-xs">{courtFee}đ/60p</small>
+              </div>
+            </div>
+
+            {activeMatch ? (
+              <>
+                <BadmintonCourt
+                  playerTopLeft={name(activeMatch.team1[0])}
+                  playerBottomLeft={name(activeMatch.team1[1])}
+                  playerTopRight={name(activeMatch.team2[0])}
+                  playerBottomRight={name(activeMatch.team2[1])}
+                  matchType={activeMatch.type}
+                  startTime={activeMatch.startTime}
+                  onEndMatch={() => endMatch(activeMatch.id)}
+                />
+                <div className="p-3">
+                  <button
+                    disabled
+                    className="w-full rounded-xl py-2.5 text-xs font-extrabold tracking-wide bg-gray-200 text-gray-400 cursor-not-allowed"
+                  >
+                    TRẢ SÂN
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-3 gap-1.5 p-3">
+                <button
+                  onClick={() => setModal({ court: String(c), manual: false })}
+                  className="bg-primary text-white rounded-xl py-2.5 px-1 text-[11px] font-extrabold leading-tight disabled:opacity-50"
+                  disabled={returned}
+                >
+                  <Shuffle className="inline mb-0.5" size={14} />
+                  <span className="block">XẾP TỰ ĐỘNG</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setPicked([]);
+                    setModal({ court: String(c), manual: true });
+                  }}
+                  className="border border-primary text-primary rounded-xl py-2.5 px-1 text-[11px] font-extrabold leading-tight disabled:opacity-50"
+                  disabled={returned}
+                >
+                  Thủ công
+                </button>
+                <button
+                  disabled={!returnEnabled}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Trả Sân ${c}? Tiền sân sẽ tính theo thời gian thực tế (làm tròn lên 30 phút).`,
+                      )
+                    ) {
+                      returnCourt(c);
+                    }
+                  }}
+                  className={`rounded-xl py-2.5 px-1 text-[11px] font-extrabold tracking-wide leading-tight ${
+                    returnEnabled
+                      ? 'bg-primary text-white'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {returned ? 'ĐÃ TRẢ' : 'TRẢ SÂN'}
+                </button>
+              </div>
+            )}
+          </article>
+        );
+      })}
+
+      {/* Waiting list — compact 2-col */}
+      <section className="bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-4 py-2.5 border-b border-teal-50 flex justify-between items-center">
+          <b className="uppercase tracking-wide text-sm">ĐANG CHỜ</b>
+          <span className="bg-teal-100 text-primary text-xs font-black px-2 py-0.5 rounded-full">
+            {waiting.length} người
+          </span>
+        </div>
+
+        {waiting.length === 0 ? (
+          <p className="p-4 text-center text-gray-400 text-sm">Không có người đang chờ.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-px bg-teal-50">
+            {waiting.map(sp => {
+              const info = resolvePlayer(sp.playerId);
+              return (
+                <div key={sp.playerId} className="bg-white p-2.5 flex items-center gap-2 min-w-0">
+                  <GenderAvatar gender={info.gender} size={36} />
+                  <div className="min-w-0">
+                    <span className="font-bold text-sm truncate block">{sp.playerName}</span>
+                    <span className="text-[11px] text-gray-500 font-bold">
+                      {info.skillLevel} · {sp.matchesPlayed}tr · {memberLabel(info.memberType)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {waiting.length >= 4 && (
+          <div className="p-3 border-t border-teal-50">
+            <button
+              onClick={() => autoMatch()}
+              className="w-full bg-primary text-white rounded-xl py-3 font-bold"
+            >
+              <Shuffle className="inline mr-1" size={17} />
+              XẾP TỰ ĐỘNG
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* Modal bổ sung sân */}
+      {adding && (
+        <div className="fixed inset-0 bg-black/50 z-50 grid place-items-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-3">
+            <h3 className="font-extrabold uppercase">BỔ SUNG SÂN</h3>
+            <label className="block text-sm font-bold">
+              Sân
+              <select
+                value={newCourt}
+                onChange={e => setNewCourt(+e.target.value)}
+                className="w-full mt-1 border rounded-xl p-3"
+              >
+                {Array.from({ length: 16 }, (_, i) => i + 1)
+                  .filter(c => !configured.includes(c))
+                  .map(c => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <div>
+              <div className="flex justify-between text-sm font-bold">
+                <span>Thời gian bổ sung:</span>
+                <b className="text-primary">{label(addMins)}</b>
+              </div>
+              <input
+                className="w-full accent-primary mt-2"
+                type="range"
+                min="15"
+                max="360"
+                step="15"
+                value={addMins}
+                onChange={e => setAddMins(+e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={() => setAdding(false)}
+                className="border border-gray-300 rounded-xl py-3 font-bold"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={() => {
+                  addCourt(newCourt, addMins);
+                  setAdding(false);
+                }}
+                className="bg-primary text-white rounded-xl py-3 font-bold"
+              >
+                THÊM SÂN
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xếp trận */}
+      {modal && (
+        <div className="fixed inset-0 bg-black/50 z-50 grid place-items-end sm:place-items-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5">
+            <div className="flex justify-between items-start mb-3">
+              <h3 className="font-extrabold">
+                SÂN {modal.court} · {modal.manual ? 'XẾP THỦ CÔNG' : 'XÁC NHẬN XẾP TỰ ĐỘNG'}
+              </h3>
+              <button onClick={() => setModal(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {modal.manual ? (
+              <>
+                <p className="text-xs text-gray-500 mb-2">Chọn đúng 4 người · 2 người đầu = Đội A</p>
+                <div className="max-h-72 overflow-y-auto divide-y divide-teal-50">
+                  {waiting.map(sp => {
+                    const info = resolvePlayer(sp.playerId);
+                    const isSel = picked.includes(sp.playerId);
+                    return (
+                      <button
+                        key={sp.playerId}
+                        onClick={() =>
+                          setPicked(x =>
+                            x.includes(sp.playerId)
+                              ? x.filter(i => i !== sp.playerId)
+                              : x.length < 4
+                                ? [...x, sp.playerId]
+                                : x,
+                          )
+                        }
+                        className={`w-full p-3 text-left flex items-center justify-between gap-2 ${
+                          isSel ? 'bg-teal-50' : ''
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <GenderAvatar gender={info.gender} size={32} />
+                          <span className="min-w-0">
+                            <b className="block truncate">{sp.playerName}</b>
+                            <small className="text-gray-400">
+                              {info.skillLevel} · {sp.matchesPlayed}tr · {memberLabel(info.memberType)}
+                            </small>
+                          </span>
+                        </span>
+                        <span
+                          className={`w-6 h-6 rounded-full border grid place-items-center flex-shrink-0 ${
+                            isSel ? 'bg-primary text-white border-primary' : 'border-gray-300'
+                          }`}
+                        >
+                          {isSel && <Check size={13} />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-center mt-2 text-gray-400">
+                  Đã chọn: {picked.length}/4
+                  {picked.length > 0 && (
+                    <>
+                      {' '}
+                      · Đội A: {picked.slice(0, 2).map(name).join(', ')}
+                      {picked.length > 2 && <> · Đội B: {picked.slice(2).map(name).join(', ')}</>}
+                    </>
+                  )}
+                </p>
+              </>
+            ) : (
+              <p className="my-4 text-gray-600 text-sm">
+                Hệ thống sẽ chọn 4 người phù hợp nhất từ danh sách chờ, ưu tiên người đợi lâu nhất.
+              </p>
+            )}
+
+            <button
+              disabled={modal.manual && picked.length !== 4}
+              onClick={() => {
+                if (modal.manual) startManualMatch(modal.court, picked);
+                else autoMatch(modal.court);
+                setModal(null);
+              }}
+              className="mt-4 w-full bg-primary disabled:bg-gray-300 text-white rounded-xl py-3 font-bold"
+            >
+              XÁC NHẬN BẮT ĐẦU
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
