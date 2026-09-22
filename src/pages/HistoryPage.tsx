@@ -148,7 +148,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
               <input
                 type="number"
                 min="0"
-                value={session.shuttleCount || 0}
+                value={session.shuttleCount ?? 15}
                 onChange={e => setShuttle(+e.target.value || 0)}
                 className="w-14 text-center rounded-md px-1 py-1 border border-teal-200 text-sm font-bold text-primary focus:outline-none focus:border-teal-400 bg-teal-50/50"
               />
