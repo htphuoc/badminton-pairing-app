@@ -39,9 +39,6 @@ export function totalCourtHours(session: Session): number {
  * Sân vãng lai (supplemental courts) dùng giá courtFeeCasualPerHour.
  */
 export function calcCourtCost(session: Session): number {
-  const fixedRate = session.costs.courtFeeFixedPerHour ?? session.costs.courtFeePerHour ?? 130000;
-  const casualRate = session.costs.courtFeeCasualPerHour ?? fixedRate;
-
   const courts = session.courtNumbers?.length
     ? session.courtNumbers
     : Array.from({ length: session.numberOfCourts }, (_, i) => i + 1);
@@ -53,11 +50,28 @@ export function calcCourtCost(session: Session): number {
     const isSupplemental = meta?.isSupplemental || (session.initialCourtNumbers && !session.initialCourtNumbers.includes(c));
     
     if (isSupplemental) {
-      const hours = getCourtBillableMinutes(session, c) / 60;
-      totalCost += hours * casualRate;
+      // Sân vãng lai: tính theo thời gian thuê thực tế, có làm tròn lên mỗi 30 phút
+      const casualRate = session.costs?.courtFeeCasualPerHour ?? session.costs?.courtFeeFixedPerHour ?? session.costs?.courtFeePerHour ?? 130000;
+      let actualMins = 0;
+      const startedAt = meta?.startedAt || session.startTime;
+      if (meta?.returnedAt) {
+        actualMins = Math.max(1, Math.round((new Date(meta.returnedAt).getTime() - new Date(startedAt || Date.now()).getTime()) / 60000));
+      } else {
+        actualMins = Math.max(1, Math.round((Date.now() - new Date(startedAt || Date.now()).getTime()) / 60000));
+      }
+      
+      const billableMins = Math.ceil(actualMins / 30) * 30;
+      totalCost += (billableMins / 60) * casualRate;
     } else {
-      // Sân cố định luôn tính tiền theo số giờ đã đăng ký ban đầu
-      const registeredHours = (session.plannedDurationMinutes || session.durationMinutes || 120) / 60;
+      // Sân cố định: luôn lấy đơn giá lúc tạo buổi chơi x số giờ đăng ký ban đầu (không dùng giờ thực chơi)
+      let fixedRate = 130000;
+      if (session.courtFees && session.courtFees[key]) {
+        fixedRate = session.courtFees[key];
+      } else if (session.costs) {
+        fixedRate = session.costs.courtFeeFixedPerHour ?? session.costs.courtFeePerHour ?? 130000;
+      }
+      
+      const registeredHours = (session.plannedDurationMinutes || 120) / 60;
       totalCost += registeredHours * fixedRate;
     }
   }
