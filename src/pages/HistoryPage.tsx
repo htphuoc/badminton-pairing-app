@@ -113,6 +113,14 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
   const costMale = calc.owed({ playerId: 'M', playerName: 'M', matchesPlayed: 1, totalMinutesPlayed: 0, gender: 'MALE', attendance: 'FINISHED' } as SessionPlayer);
   const costFemale = calc.owed({ playerId: 'F', playerName: 'F', matchesPlayed: 1, totalMinutesPlayed: 0, gender: 'FEMALE', attendance: 'FINISHED' } as SessionPlayer);
 
+  const totalPaid = calc.participants
+    .filter(p => session.players.find(sp => sp.playerId === p.playerId)?.hasPaid)
+    .reduce((sum, p) => sum + calc.owed(p), 0);
+
+  const totalRemaining = calc.participants
+    .filter(p => !session.players.find(sp => sp.playerId === p.playerId)?.hasPaid)
+    .reduce((sum, p) => sum + calc.owed(p), 0);
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/55 flex items-end sm:items-center justify-center">
       <div className="bg-gray-50 w-full max-w-md max-h-[95vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl pb-6">
@@ -187,7 +195,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
 
             <div className="rounded-xl p-3 border border-gray-200 flex flex-col items-center">
               <div className="text-xs font-extrabold text-center uppercase mb-3 text-gray-500">CHIA TIỀN</div>
-              <div className="flex justify-center gap-3 mb-4 w-full">
+              <div className="flex justify-center gap-3 mb-2 w-full">
                 <div className="flex items-center justify-between border border-blue-200 bg-blue-50/50 rounded px-2 py-1.5 flex-1 max-w-[140px]">
                   <span className="text-blue-600 font-extrabold text-sm">NAM:</span>
                   <span className="font-bold text-primary">{money(costMale)}</span>
@@ -203,6 +211,16 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
                   </div>
                 </div>
               </div>
+              <div className="flex justify-center gap-3 mb-4 w-full">
+                <div className="flex flex-col items-center justify-center border border-green-200 bg-green-50/50 rounded px-2 py-1.5 flex-1 max-w-[140px]">
+                  <span className="text-[10px] text-green-600 font-extrabold uppercase mb-0.5">Đã chuyển</span>
+                  <span className="text-sm font-bold text-green-700">{money(totalPaid)}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center border border-amber-200 bg-amber-50/50 rounded px-2 py-1.5 flex-1 max-w-[140px]">
+                  <span className="text-[10px] text-amber-600 font-extrabold uppercase mb-0.5">Còn lại</span>
+                  <span className="text-sm font-bold text-amber-700">{money(totalRemaining)}</span>
+                </div>
+              </div>
               <div className="text-center w-full">
                 <div className="text-[10px] text-gray-400 font-medium uppercase mb-0.5">CHUYỂN KHOẢN CHO:</div>
                 <div className="text-sm font-extrabold text-primary uppercase">NGUYỄN THỊ HỒNG DUNG</div>
@@ -213,11 +231,12 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
           <CourtTimeSection session={session} />
 
           <div className="bg-white border border-teal-100 rounded-2xl overflow-hidden shadow-sm mb-4">
-            <div className="grid grid-cols-[1fr_48px_48px_80px] px-4 py-3 border-b border-teal-100 text-[11px] font-extrabold text-primary uppercase">
+            <div className="grid grid-cols-[1fr_40px_40px_70px_40px] px-4 py-3 border-b border-teal-100 text-[11px] font-extrabold text-primary uppercase items-center">
               <span>TÊN</span>
-              <span className="text-center">TRẬN</span>
-              <span className="text-center">PHÚT</span>
-              <span className="text-right">SỐ TIỀN</span>
+              <span className="text-center" title="Số trận">TR</span>
+              <span className="text-center" title="Số phút">P</span>
+              <span className="text-right">TIỀN</span>
+              <span className="text-center text-[10px] leading-none">ĐÃ<br/>CHUYỂN</span>
             </div>
             {calc.participants.length === 0 ? (
               <p className="p-4 text-center text-gray-400 text-sm">Không có thành viên tham gia.</p>
@@ -225,7 +244,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
               calc.participants.map(p => (
                 <div
                   key={p.playerId}
-                  className="grid grid-cols-[1fr_48px_48px_80px] px-4 py-3 border-b border-gray-100 last:border-0 text-sm items-center gap-1 hover:bg-gray-50"
+                  className="grid grid-cols-[1fr_40px_40px_70px_40px] px-4 py-3 border-b border-gray-100 last:border-0 text-sm items-center gap-1 hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <GenderAvatar gender={genderOf(p)} size={28} />
@@ -240,6 +259,20 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
                   <span className="text-gray-600 text-center font-medium">{p.matchesPlayed}</span>
                   <span className="text-gray-600 text-center font-medium">{p.totalMinutesPlayed}</span>
                   <b className="text-primary text-right">{money(calc.owed(p))}</b>
+                  <div className="flex justify-center">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
+                      checked={session.players.find(sp => sp.playerId === p.playerId)?.hasPaid || false}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const newPlayers = session.players.map(sp =>
+                          sp.playerId === p.playerId ? { ...sp, hasPaid: checked } : sp
+                        );
+                        update({ ...session, players: newPlayers });
+                      }}
+                    />
+                  </div>
                 </div>
               ))
             )}

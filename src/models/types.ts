@@ -42,6 +42,7 @@ export interface SessionPlayer {
   matchesPlayed: number;
   totalMinutesPlayed: number;
   waitingSince?: string;
+  hasPaid?: boolean;
 }
 
 export interface Match {
