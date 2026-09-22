@@ -8,7 +8,7 @@ import { careerMatchCount } from '../utils/costCalc';
 
 const skillLabel = (s: SkillLevel | string) => {
   if (s === 'Y') return 'Yếu';
-  if (s === 'TBY') return 'Trung Bình Yếu';
+  if (s === 'TBY') return 'TB Yếu';
   if (s === 'TB') return 'Trung Bình';
   if (s === 'K') return 'Khá';
   return s;
