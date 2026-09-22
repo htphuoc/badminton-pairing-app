@@ -34,22 +34,34 @@ export function totalCourtHours(session: Session): number {
 }
 
 /**
- * Tiền sân = tổng (giờ sân) × đơn giá trung bình theo loại thành viên tham gia.
- * Cố định / Vãng lai dùng đơn giá riêng trong Cài đặt.
+ * Tiền sân = tổng (giờ sân * đơn giá sân).
+ * Sân cố định (initial courts) dùng giá courtFeeFixedPerHour.
+ * Sân vãng lai (supplemental courts) dùng giá courtFeeCasualPerHour.
  */
-export function calcCourtCost(session: Session, genderLookup?: (playerId: string) => Gender | undefined): number {
-  void genderLookup;
-  const participants = session.players.filter(p => p.attendance !== 'ABSENT');
-  const hours = totalCourtHours(session);
-  if (hours <= 0) return 0;
-  if (participants.length === 0) {
-    const fallback = session.costs.courtFeeFixedPerHour ?? session.costs.courtFeePerHour ?? 130000;
-    return hours * fallback;
+export function calcCourtCost(session: Session): number {
+  const fixedRate = session.costs.courtFeeFixedPerHour ?? session.costs.courtFeePerHour ?? 130000;
+  const casualRate = session.costs.courtFeeCasualPerHour ?? fixedRate;
+
+  const courts = session.courtNumbers?.length
+    ? session.courtNumbers
+    : Array.from({ length: session.numberOfCourts }, (_, i) => i + 1);
+
+  let totalCost = 0;
+  for (const c of courts) {
+    const hours = getCourtBillableMinutes(session, c) / 60;
+    
+    const key = String(c);
+    const meta = session.courtMeta?.[key];
+    const isSupplemental = meta?.isSupplemental || (session.initialCourtNumbers && !session.initialCourtNumbers.includes(c));
+    
+    if (isSupplemental) {
+      totalCost += hours * casualRate;
+    } else {
+      totalCost += hours * fixedRate;
+    }
   }
-  const avgRate =
-    participants.reduce((sum, p) => sum + courtRateForMember(session.costs, p.memberType), 0) /
-    participants.length;
-  return hours * avgRate;
+
+  return totalCost;
 }
 
 export function calcShuttleCost(session: Session): number {
