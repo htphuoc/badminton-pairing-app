@@ -110,8 +110,8 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
     p.gender ?? players.find(x => x.id === p.playerId)?.gender ?? 'MALE';
 
   // Tính tiền mẫu cho 1 nam / 1 nữ
-  const costMale = calc.owed({ playerId: 'M', playerName: 'M', matchesPlayed: 1, totalMinutesPlayed: 0, gender: 'MALE', attendance: 'PRESENT' } as SessionPlayer);
-  const costFemale = calc.owed({ playerId: 'F', playerName: 'F', matchesPlayed: 1, totalMinutesPlayed: 0, gender: 'FEMALE', attendance: 'PRESENT' } as SessionPlayer);
+  const costMale = calc.owed({ playerId: 'M', playerName: 'M', matchesPlayed: 1, totalMinutesPlayed: 0, gender: 'MALE', attendance: 'FINISHED' } as SessionPlayer);
+  const costFemale = calc.owed({ playerId: 'F', playerName: 'F', matchesPlayed: 1, totalMinutesPlayed: 0, gender: 'FEMALE', attendance: 'FINISHED' } as SessionPlayer);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/55 flex items-end sm:items-center justify-center">
