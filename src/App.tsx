@@ -10,7 +10,7 @@ export default function App() {
     <BrowserRouter>
       <div className="min-h-screen pb-20">
         <header className="bg-white/90 backdrop-blur shadow-sm sticky top-0 z-10 border-b border-teal-50">
-          <Link to="/session" className="px-4 py-3 flex items-center justify-center gap-2">
+          <Link to="/" className="px-4 py-3 flex items-center justify-center gap-2">
             <img
               src="/logo.jpg"
               alt="Cầu Lông 360°"
@@ -24,16 +24,16 @@ export default function App() {
 
         <main className="p-4 max-w-md mx-auto">
           <Routes>
-            <Route path="/" element={<Navigate to="/session" replace />} />
+            <Route path="/" element={<SessionPage />} />
+            <Route path="/session" element={<Navigate to="/" replace />} />
             <Route path="/players" element={<PlayersPage />} />
-            <Route path="/session" element={<SessionPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
 
         <nav className="fixed bottom-0 w-full bg-white border-t border-teal-100 flex justify-around p-3 z-10 max-w-md mx-auto left-0 right-0 rounded-t-2xl shadow-lg">
-          <NavLink to="/session" className={({ isActive }) => `flex flex-col items-center ${isActive ? 'text-primary font-bold' : 'text-gray-400'}`}>
+          <NavLink to="/" className={({ isActive }) => `flex flex-col items-center ${isActive ? 'text-primary font-bold' : 'text-gray-400'}`}>
             <PlaySquare size={24} />
             <span className="text-xs mt-1">Sân</span>
           </NavLink>

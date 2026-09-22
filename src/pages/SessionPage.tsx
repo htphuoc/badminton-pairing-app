@@ -188,7 +188,9 @@ export default function SessionPage() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 p-2">
-            {players.map(p => {
+            {[...players]
+              .sort((a, b) => (a.memberType === 'CỐ ĐỊNH' ? -1 : 1) - (b.memberType === 'CỐ ĐỊNH' ? -1 : 1))
+              .map(p => {
               const selected = ids.includes(p.id);
               const matches = careerMatchCount(p.id, allSessions);
               return (
@@ -447,7 +449,9 @@ export default function SessionPage() {
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-2 p-3 overflow-y-auto">
-                {outsidePlayers.map(p => {
+                {[...outsidePlayers]
+                  .sort((a, b) => (a.memberType === 'CỐ ĐỊNH' ? -1 : 1) - (b.memberType === 'CỐ ĐỊNH' ? -1 : 1))
+                  .map(p => {
                   const selected = memberPick.includes(p.id);
                   const matches = careerMatchCount(p.id, allSessions);
                   return (

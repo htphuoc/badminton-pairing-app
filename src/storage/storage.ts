@@ -1,11 +1,44 @@
-import type { Player, Session, CostSettings, Gender, SkillLevel, DefaultCourtsByWeekday } from '../models/types';
+import type { Player, Session, CostSettings, Gender, SkillLevel, DefaultCourtsByWeekday, MemberType } from '../models/types';
 import { v4 as uuidv4 } from 'uuid';
 
 const PLAYERS_KEY = 'badminton_players', SESSIONS_KEY = 'badminton_sessions', SETTINGS_KEY = 'badminton_settings', SEED_VERSION_KEY = 'badminton_seed_version';
-const imported: [string, Gender, SkillLevel][] = [
-  ['Hà','FEMALE','TBY'], ['Phương','FEMALE','TBY'], ['Tường','MALE','TB'], ['Vân','FEMALE','TB'], ['Hà lớn','FEMALE','TB'], ['c Ba','FEMALE','TBY'], ['Nhi','FEMALE','TB'], ['Oanh','FEMALE','TBY'], ['c Kiều','FEMALE','Y'], ['a Hoàng','MALE','TB'], ['Phương NT','MALE','TB'], ['Tài','MALE','TB'], ['Hào','MALE','TBY'], ['Huân','MALE','TB'], ['a Bảo','MALE','TB'], ['a Phước','MALE','TB'], ['Lộc','MALE','TBY'], ['a Bi','MALE','TBY'], ['Cường','MALE','TB'], ['Đạt','MALE','Y'], ['Hiếu','MALE','TB'], ['Phúc','MALE','TB'], ['Duy','MALE','TBY'], ['Dung','FEMALE','TB']
+const imported: [string, MemberType, Gender, SkillLevel][] = [
+  ['Vân', 'CỐ ĐỊNH', 'FEMALE', 'TB'],
+  ['Hà Đỗ', 'CỐ ĐỊNH', 'FEMALE', 'Y'],
+  ['chị Ba', 'CỐ ĐỊNH', 'FEMALE', 'Y'],
+  ['Dung', 'CỐ ĐỊNH', 'FEMALE', 'TB'],
+  ['bé Mi', 'CỐ ĐỊNH', 'FEMALE', 'Y'],
+  ['Tài', 'CỐ ĐỊNH', 'MALE', 'TB'],
+  ['a Phước', 'CỐ ĐỊNH', 'MALE', 'TB'],
+  ['a Bi', 'CỐ ĐỊNH', 'MALE', 'TBY'],
+  ['Kiệt', 'CỐ ĐỊNH', 'MALE', 'TB'],
+  ['bé Hà', 'VÃNG LAI', 'FEMALE', 'TB'],
+  ['bé Phương', 'VÃNG LAI', 'FEMALE', 'TBY'],
+  ['Nhi', 'VÃNG LAI', 'FEMALE', 'TB'],
+  ['Doan', 'VÃNG LAI', 'FEMALE', 'Y'],
+  ['c Kiều', 'VÃNG LAI', 'FEMALE', 'Y'],
+  ['Tường', 'VÃNG LAI', 'MALE', 'K'],
+  ['a Hoàng', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Phương NT', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Hào', 'VÃNG LAI', 'MALE', 'TBY'],
+  ['Huân', 'VÃNG LAI', 'MALE', 'TB'],
+  ['a Bảo', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Lộc', 'VÃNG LAI', 'MALE', 'TBY'],
+  ['Cường', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Đạt', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Hiếu', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Phúc', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Duy', 'VÃNG LAI', 'MALE', 'TBY'],
+  ['Phước nhỏ', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Trí Vững', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Bảo Duy', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Tân', 'VÃNG LAI', 'MALE', 'TB'],
+  ['a Tâm', 'VÃNG LAI', 'MALE', 'TB'],
+  ['Thuyên', 'VÃNG LAI', 'MALE', 'K'],
+  ['Đỗ Hưng', 'VÃNG LAI', 'MALE', 'TBY'],
+  ['Quốc', 'VÃNG LAI', 'MALE', 'TBY'],
 ];
-const createSeed = (): Player[] => imported.map(([name, gender, skillLevel]) => ({ id: uuidv4(), name, gender, skillLevel, memberType: 'CỐ ĐỊNH', active: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }));
+const createSeed = (): Player[] => imported.map(([name, memberType, gender, skillLevel]) => ({ id: uuidv4(), name, gender, skillLevel, memberType, active: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }));
 
 const defaultSettings: CostSettings = {
   courtFeePerHour: 130000,
@@ -74,10 +107,10 @@ export function getDefaultCourtsForWeekday(
 export const StorageService = {
   getPlayers: (): Player[] => {
     // Versioned reset is intentional: replace the old demo list with the roster supplied in the design reference.
-    if (localStorage.getItem(SEED_VERSION_KEY) !== '2') {
+    if (localStorage.getItem(SEED_VERSION_KEY) !== '3') {
       const roster = createSeed();
       localStorage.setItem(PLAYERS_KEY, JSON.stringify(roster));
-      localStorage.setItem(SEED_VERSION_KEY, '2');
+      localStorage.setItem(SEED_VERSION_KEY, '3');
       return roster;
     }
     return JSON.parse(localStorage.getItem(PLAYERS_KEY) || '[]');
