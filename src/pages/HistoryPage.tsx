@@ -231,7 +231,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
           <CourtTimeSection session={session} />
 
           <div className="bg-white border border-teal-100 rounded-2xl overflow-hidden shadow-sm mb-4">
-            <div className="grid grid-cols-[1fr_40px_40px_70px_40px] px-4 py-3 border-b border-teal-100 text-[11px] font-extrabold text-primary uppercase items-center">
+            <div className="grid grid-cols-[1fr_36px_36px_72px_44px] px-4 py-3 border-b border-teal-100 text-[11px] font-extrabold text-primary uppercase items-center gap-1">
               <span>TÊN</span>
               <span className="text-center" title="Số trận">TR</span>
               <span className="text-center" title="Số phút">P</span>
@@ -244,7 +244,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
               calc.participants.map(p => (
                 <div
                   key={p.playerId}
-                  className="grid grid-cols-[1fr_40px_40px_70px_40px] px-4 py-3 border-b border-gray-100 last:border-0 text-sm items-center gap-1 hover:bg-gray-50"
+                  className="grid grid-cols-[1fr_36px_36px_72px_44px] px-4 py-3 border-b border-gray-100 last:border-0 text-sm items-center gap-1 hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <GenderAvatar gender={genderOf(p)} size={28} />
