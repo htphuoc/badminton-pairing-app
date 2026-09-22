@@ -349,12 +349,26 @@ export function useSession() {
     });
   };
 
+  /** Gỡ thành viên khỏi danh sách chờ (đánh dấu ABSENT). */
+  const removePlayerFromSession = (playerId: string) => {
+    if (!currentSession) return;
+    const now = new Date().toISOString();
+    save({
+      ...currentSession,
+      players: currentSession.players.map(p =>
+        p.playerId === playerId ? { ...p, attendance: 'ABSENT' as const } : p,
+      ),
+      updatedAt: now,
+    });
+  };
+
   return {
     currentSession,
     createSession,
     endSession,
     addCourt,
     addPlayersToSession,
+    removePlayerFromSession,
     returnCourt,
     previewAutoMatch,
     confirmAutoMatch,

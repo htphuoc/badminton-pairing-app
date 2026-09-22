@@ -49,6 +49,7 @@ export default function SessionPage() {
     endMatch,
     addCourt,
     addPlayersToSession,
+    removePlayerFromSession,
     returnCourt,
   } = useSession();
   const { players } = usePlayers();
@@ -64,6 +65,7 @@ export default function SessionPage() {
   const [newCourt, setNewCourt] = useState(4);
   const [addMins, setAddMins] = useState(60);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [pendingSessionType, setPendingSessionType] = useState<'CỐ ĐỊNH' | 'VÃNG LAI' | null>(null);
   const [autoPreview, setAutoPreview] = useState<{
     courtId: string;
     suggestion: MatchSuggestion;
@@ -197,8 +199,10 @@ export default function SessionPage() {
                 <button
                   key={p.id}
                   onClick={() => toggle(p.id)}
-                  className={`relative text-left rounded-xl border p-2 flex gap-2 items-start ${
-                    selected ? 'border-primary bg-teal-50/60' : 'border-teal-50'
+                  className={`relative text-left rounded-xl p-2 flex gap-2 items-start transition-all ${
+                    selected
+                      ? 'border-2 border-primary bg-teal-50/70 shadow-sm'
+                      : 'border border-teal-100 bg-white'
                   }`}
                 >
                   {selected && (
@@ -222,24 +226,99 @@ export default function SessionPage() {
           </div>
         </section>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <button
             disabled={ids.length < 4 || !courts.length}
-            onClick={() => createSession(courts, mins, ids, 'CỐ ĐỊNH')}
-            className="w-full bg-primary disabled:bg-gray-300 text-white rounded-2xl py-4 font-extrabold flex items-center justify-center text-sm sm:text-base"
+            onClick={() => setPendingSessionType('CỐ ĐỊNH')}
+            className={`w-full rounded-2xl py-4 font-extrabold flex items-center justify-center text-sm transition-all
+              ${pendingSessionType === 'CỐ ĐỊNH'
+                ? 'bg-primary text-white ring-4 ring-primary/40 shadow-lg scale-[1.02]'
+                : 'bg-primary text-white disabled:bg-gray-300 opacity-80'}`}
           >
             <Play className="inline mr-1" size={18} />
             ĐÁNH CỐ ĐỊNH
           </button>
           <button
             disabled={ids.length < 4 || !courts.length}
-            onClick={() => createSession(courts, mins, ids, 'VÃNG LAI')}
-            className="w-full bg-emerald-600 disabled:bg-gray-300 text-white rounded-2xl py-4 font-extrabold flex items-center justify-center text-sm sm:text-base"
+            onClick={() => setPendingSessionType('VÃNG LAI')}
+            className={`w-full rounded-2xl py-4 font-extrabold flex items-center justify-center text-sm transition-all
+              ${pendingSessionType === 'VÃNG LAI'
+                ? 'border-2 border-emerald-600 text-emerald-600 ring-4 ring-emerald-600/30 shadow-lg scale-[1.02] bg-emerald-50'
+                : 'border-2 border-emerald-600 text-emerald-600 bg-white disabled:border-gray-300 disabled:text-gray-400 opacity-80'}`}
           >
             <Play className="inline mr-1" size={18} />
             ĐÁNH VÃNG LAI
           </button>
         </div>
+
+        {/* Modal xác nhận tạo buổi */}
+        {pendingSessionType && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-xl">
+              <div>
+                <h3 className="font-extrabold uppercase text-base">Xác nhận tạo buổi chơi</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Loại buổi:{' '}
+                  <span className={`font-black ${pendingSessionType === 'VÃNG LAI' ? 'text-emerald-600' : 'text-primary'}`}>
+                    {pendingSessionType}
+                  </span>
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-extrabold text-primary uppercase tracking-wide mb-1.5">
+                    Sân đã chọn ({courts.length} sân)
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[...courts].sort((a, b) => a - b).map(c => (
+                      <span key={c} className="bg-primary text-white text-xs font-bold px-2.5 py-1 rounded-lg">
+                        Sân {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-extrabold text-primary uppercase tracking-wide mb-1.5">
+                    Thành viên tham gia ({ids.length} người)
+                  </p>
+                  <div className="max-h-40 overflow-y-auto grid grid-cols-2 gap-1">
+                    {ids.map(id => {
+                      const p = players.find(pl => pl.id === id);
+                      if (!p) return null;
+                      return (
+                        <div key={id} className="flex items-center gap-1.5 bg-teal-50 rounded-lg px-2 py-1 min-w-0">
+                          <GenderAvatar gender={p.gender} size={24} />
+                          <span className="text-xs font-bold truncate">{p.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={() => setPendingSessionType(null)}
+                  className="border border-gray-300 rounded-xl py-3 font-bold text-sm"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={() => {
+                    createSession(courts, mins, ids, pendingSessionType);
+                    setPendingSessionType(null);
+                  }}
+                  className={`rounded-xl py-3 font-extrabold text-sm text-white
+                    ${pendingSessionType === 'VÃNG LAI' ? 'bg-emerald-600' : 'bg-primary'}`}
+                >
+                  BẮT ĐẦU
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -399,7 +478,7 @@ export default function SessionPage() {
         );
       })}
 
-      {/* Waiting list — compact 2-col */}
+      {/* Waiting list */}
       <section className="bg-white rounded-2xl overflow-hidden shadow-sm">
         <div className="px-4 py-2.5 border-b border-teal-50 flex justify-between items-center">
           <b className="uppercase tracking-wide text-sm">ĐANG CHỜ</b>
@@ -411,33 +490,32 @@ export default function SessionPage() {
         {waiting.length === 0 ? (
           <p className="p-4 text-center text-gray-400 text-sm">Không có người đang chờ.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-px bg-teal-50">
+          <div className="divide-y divide-teal-50">
             {waiting.map(sp => {
               const info = resolvePlayer(sp.playerId);
               return (
-                <div key={sp.playerId} className="bg-white p-2.5 flex items-center gap-2 min-w-0">
+                <div key={sp.playerId} className="px-3 py-2.5 flex items-center gap-2 min-w-0">
                   <GenderAvatar gender={info.gender} size={36} />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <span className="font-bold text-sm truncate block">{sp.playerName}</span>
                     <span className="text-[11px] text-gray-500 font-bold">
                       {skillLabel(info.skillLevel)} · {sp.matchesPlayed}C · {memberLabel(info.memberType)}
                     </span>
                   </div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Gỡ "${sp.playerName}" khỏi danh sách chờ (vắng mặt)?`)) {
+                        removePlayerFromSession(sp.playerId);
+                      }
+                    }}
+                    className="flex-shrink-0 w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-colors"
+                    title="Gỡ khỏi danh sách"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               );
             })}
-          </div>
-        )}
-
-        {waiting.length >= 4 && (
-          <div className="p-3 border-t border-teal-50">
-            <button
-              onClick={() => openAutoPreview()}
-              className="w-full bg-primary text-white rounded-xl py-3 font-bold"
-            >
-              <Shuffle className="inline mr-1" size={17} />
-              XẾP TỰ ĐỘNG
-            </button>
           </div>
         )}
       </section>
