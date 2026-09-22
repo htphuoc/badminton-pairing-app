@@ -201,7 +201,7 @@ export default function SessionPage() {
                   onClick={() => toggle(p.id)}
                   className={`relative text-left rounded-xl p-2 flex gap-2 items-start transition-all ${
                     selected
-                      ? 'border-2 border-primary bg-teal-50/70 shadow-sm'
+                      ? 'border-4 border-primary bg-teal-50/70 shadow-sm'
                       : 'border border-teal-100 bg-white'
                   }`}
                 >
@@ -552,8 +552,10 @@ export default function SessionPage() {
                           x.includes(p.id) ? x.filter(i => i !== p.id) : [...x, p.id],
                         )
                       }
-                      className={`relative text-left rounded-xl border p-2 flex gap-2 items-start ${
-                        selected ? 'border-primary bg-teal-50/60' : 'border-teal-50'
+                      className={`relative text-left rounded-xl p-2 flex gap-2 items-start transition-all ${
+                        selected
+                          ? 'border-4 border-primary bg-teal-50/70 shadow-sm'
+                          : 'border border-teal-100 bg-white'
                       }`}
                     >
                       {selected && (
