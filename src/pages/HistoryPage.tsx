@@ -125,12 +125,22 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => update(session)}
-              className="border border-white/60 hover:bg-white/10 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition"
-            >
-              <Save size={16} /> LƯU
-            </button>
+            {!session.isFinalized ? (
+              <button
+                onClick={() => {
+                  if (window.confirm('Chốt sổ sẽ không thể sửa lại số cầu. Bạn có chắc chắn?')) {
+                    update({ ...session, isFinalized: true });
+                  }
+                }}
+                className="border border-white/60 hover:bg-white/10 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition"
+              >
+                <Save size={16} /> CHỐT SỔ
+              </button>
+            ) : (
+              <div className="px-3 py-1.5 rounded-lg text-sm font-bold border border-transparent bg-white/20">
+                ĐÃ CHỐT
+              </div>
+            )}
             <button onClick={close} className="hover:text-teal-200 transition">
               <X size={24} />
             </button>
@@ -150,7 +160,8 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
                 min="0"
                 value={session.shuttleCount ?? 15}
                 onChange={e => setShuttle(+e.target.value || 0)}
-                className="w-14 text-center rounded-md px-1 py-1 border border-teal-200 text-sm font-bold text-primary focus:outline-none focus:border-teal-400 bg-teal-50/50"
+                disabled={session.isFinalized}
+                className="w-14 text-center rounded-md px-1 py-1 border border-teal-200 text-sm font-bold text-primary focus:outline-none focus:border-teal-400 bg-teal-50/50 disabled:opacity-60 disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-500"
               />
               <div className="text-[9px] text-gray-400 mt-1.5 font-medium whitespace-nowrap">
                 {pricePerShuttle.toLocaleString('vi-VN')}đ/quả

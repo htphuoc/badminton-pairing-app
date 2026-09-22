@@ -115,6 +115,8 @@ export interface Session {
   /** Per-court display rate / 60 phút (usually fixed rate at add time). */
   courtFees?: Record<string, number>;
   shuttleCount?: number;
+  /** When true, the session is locked and shuttle count cannot be edited. */
+  isFinalized?: boolean;
 
   players: SessionPlayer[];
   matches: Match[];
