@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Banknote, ChevronRight, Save, Volleyball, X, Mars, Venus } from 'lucide-react';
+import { Banknote, ChevronRight, Save, X, Mars, Venus } from 'lucide-react';
 import { StorageService } from '../storage/storage';
 import type { Session, Player, SessionPlayer } from '../models/types';
 import { calcSessionCosts, type CostBreakdown } from '../utils/costCalc';
@@ -181,7 +181,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
               </div>
             </div>
 
-            <CostCard icon={<Volleyball size={18} />} label="Tiền cầu" value={calc.shuttleCost} />
+            <CostCard icon={<ShuttlecockIcon size={18} />} label="Tiền cầu" value={calc.shuttleCost} />
           </div>
 
           <div className="bg-white border border-teal-100 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
@@ -353,5 +353,29 @@ function CourtTimeSection({ session }: { session: Session }) {
         })}
       </div>
     </div>
+  );
+}
+
+function ShuttlecockIcon({ size = 24, className = "" }: { size?: number, className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M4 11h16" />
+      <path d="M6 7h12" />
+      <path d="M8 3h8" />
+      <path d="M12 22c-2.2 0-4-1.8-4-4l2-7h4l2 7c0 2.2-1.8 4-4 4z" />
+      <path d="M4 11l4-8" />
+      <path d="M20 11l-4-8" />
+    </svg>
   );
 }
