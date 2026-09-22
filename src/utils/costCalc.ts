@@ -48,16 +48,17 @@ export function calcCourtCost(session: Session): number {
 
   let totalCost = 0;
   for (const c of courts) {
-    const hours = getCourtBillableMinutes(session, c) / 60;
-    
     const key = String(c);
     const meta = session.courtMeta?.[key];
     const isSupplemental = meta?.isSupplemental || (session.initialCourtNumbers && !session.initialCourtNumbers.includes(c));
     
     if (isSupplemental) {
+      const hours = getCourtBillableMinutes(session, c) / 60;
       totalCost += hours * casualRate;
     } else {
-      totalCost += hours * fixedRate;
+      // Sân cố định luôn tính tiền theo số giờ đã đăng ký ban đầu
+      const registeredHours = (session.plannedDurationMinutes || session.durationMinutes || 120) / 60;
+      totalCost += registeredHours * fixedRate;
     }
   }
 
