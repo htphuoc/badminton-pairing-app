@@ -138,7 +138,7 @@ function useShuttlecock(containerRef: React.RefObject<HTMLDivElement | null>) {
   const stateRef = useRef({
     x: 50, y: 50,
     targetIdx: 2,
-    speed: 0.8, // % per frame — nhanh
+    speed: 0.2, // chậm, rõ hình dạng
   });
 
   useEffect(() => {
@@ -177,7 +177,7 @@ function useShuttlecock(containerRef: React.RefObject<HTMLDivElement | null>) {
         const isLeft = s.targetIdx < 2;
         const nextPool = isLeft ? [2, 3] : [0, 1];
         s.targetIdx = nextPool[Math.floor(Math.random() * 2)];
-        s.speed = 0.6 + Math.random() * 0.5; // ngẫu nhiên tốc độ
+        s.speed = 0.18 + Math.random() * 0.12; // chậm, rõ hình dạng
       } else {
         s.x += (dx / dist) * speed;
         s.y += (dy / dist) * speed;
@@ -218,8 +218,8 @@ export default function BadmintonCourt({
   const courtRef = useRef<HTMLDivElement>(null);
   const { pos, angle } = useShuttlecock(courtRef);
 
-  // Kích thước quả cầu ~ 1/2 avatar (avatar=30 → cầu=15)
-  const SHUTTLE_SIZE = 15;
+  // Kích thước quả cầu 30px
+  const SHUTTLE_SIZE = 30;
 
   return (
     <div className="w-full overflow-hidden" style={{ background: '#2f9a46' }}>
