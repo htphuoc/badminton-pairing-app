@@ -6,11 +6,6 @@ import { calcSessionCosts, type CostBreakdown } from '../utils/costCalc';
 import GenderAvatar from '../components/GenderAvatar';
 
 const money = (n: number) => `${Math.round(n).toLocaleString('vi-VN')}đ`;
-const moneyK = (n: number) => {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace('.0', '')}tr`;
-  if (n >= 1000) return `${Math.round(n / 1000)}k`;
-  return `${n}đ`;
-};
 
 const formatClock = (iso?: string) => {
   if (!iso) return '—';
@@ -71,7 +66,7 @@ export default function HistoryPage() {
                 </span>
                 <span className="text-xs text-gray-500">
                   {costs.participants.length} người · {s.matches.length} trận · {s.numberOfCourts} sân
-                  · <b className="text-primary">{moneyK(costs.total)}</b>
+                  · <b className="text-primary">{money(costs.total)}</b>
                 </span>
               </div>
             </div>
@@ -200,28 +195,28 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
 
             <div className="rounded-xl p-3 border border-gray-200 flex flex-col items-center">
               <div className="text-xs font-extrabold text-center uppercase mb-3 text-gray-500">CHIA TIỀN</div>
-              <div className="flex justify-center gap-3 mb-2 w-full">
-                <div className="flex items-center justify-between border border-blue-200 bg-blue-50/50 rounded px-2 py-1.5 flex-1 max-w-[140px]">
-                  <span className="text-blue-600 font-extrabold text-sm">NAM:</span>
-                  <span className="font-bold text-primary">{money(costMale)}</span>
-                  <div className="bg-blue-500 text-white rounded-[4px] w-5 h-5 flex items-center justify-center ml-1">
-                    <Mars size={14} strokeWidth={3} />
+              <div className="flex justify-center gap-2 mb-2 w-full">
+                <div className="flex items-center gap-1 border border-blue-200 bg-blue-50/50 rounded px-2 py-1.5 flex-1">
+                  <div className="bg-blue-500 text-white rounded-[4px] w-4 h-4 flex items-center justify-center flex-shrink-0">
+                    <Mars size={11} strokeWidth={3} />
                   </div>
+                  <span className="text-blue-600 font-extrabold text-[11px]">NAM:</span>
+                  <span className="font-bold text-primary text-[11px] ml-auto">{money(costMale)}</span>
                 </div>
-                <div className="flex items-center justify-between border border-pink-200 bg-pink-50/50 rounded px-2 py-1.5 flex-1 max-w-[140px]">
-                  <span className="text-pink-600 font-extrabold text-sm">NỮ:</span>
-                  <span className="font-bold text-primary">{money(costFemale)}</span>
-                  <div className="bg-pink-500 text-white rounded-[4px] w-5 h-5 flex items-center justify-center ml-1">
-                    <Venus size={14} strokeWidth={3} />
+                <div className="flex items-center gap-1 border border-pink-200 bg-pink-50/50 rounded px-2 py-1.5 flex-1">
+                  <div className="bg-pink-500 text-white rounded-[4px] w-4 h-4 flex items-center justify-center flex-shrink-0">
+                    <Venus size={11} strokeWidth={3} />
                   </div>
+                  <span className="text-pink-600 font-extrabold text-[11px]">NỮ:</span>
+                  <span className="font-bold text-primary text-[11px] ml-auto">{money(costFemale)}</span>
                 </div>
               </div>
-              <div className="flex justify-center gap-3 mb-4 w-full">
-                <div className="flex flex-col items-center justify-center border border-green-200 bg-green-50/50 rounded px-2 py-1.5 flex-1 max-w-[140px]">
-                  <span className="text-[10px] text-green-600 font-extrabold uppercase mb-0.5">Đã chuyển</span>
+              <div className="flex justify-center gap-2 mb-4 w-full">
+                <div className="flex flex-col items-center justify-center border border-green-200 bg-green-50/50 rounded px-2 py-1.5 flex-1">
+                  <span className="text-[10px] text-green-600 font-extrabold uppercase mb-0.5">ĐÃ NHẬN</span>
                   <span className="text-sm font-bold text-green-700">{money(totalPaid)}</span>
                 </div>
-                <div className="flex flex-col items-center justify-center border border-amber-200 bg-amber-50/50 rounded px-2 py-1.5 flex-1 max-w-[140px]">
+                <div className="flex flex-col items-center justify-center border border-amber-200 bg-amber-50/50 rounded px-2 py-1.5 flex-1">
                   <span className="text-[10px] text-amber-600 font-extrabold uppercase mb-0.5">Còn lại</span>
                   <span className="text-sm font-bold text-amber-700">{money(totalRemaining)}</span>
                 </div>

@@ -10,13 +10,13 @@ export default function App() {
     <BrowserRouter>
       <div className="min-h-screen pb-20">
         <header className="bg-white/90 backdrop-blur shadow-sm sticky top-0 z-10 border-b border-teal-50">
-          <Link to="/" className="px-4 py-3 flex items-center justify-center gap-2">
+          <Link to="/" className="px-4 py-3 flex items-center justify-center gap-2.5">
             <img
               src="/logo.jpg"
               alt="Cầu Lông 360°"
-              className="h-10 w-10 rounded-full object-cover ring-2 ring-primary/20"
+              className="h-12 w-12 rounded-full object-cover ring-2 ring-primary/30 shadow-sm"
             />
-            <h1 className="text-xl font-bold text-primary tracking-wide">
+            <h1 className="text-2xl font-extrabold text-primary tracking-wide">
               CẦU LÔNG 360°
             </h1>
           </Link>
