@@ -222,14 +222,24 @@ export default function SessionPage() {
           </div>
         </section>
 
-        <button
-          disabled={ids.length < 4 || !courts.length}
-          onClick={() => createSession(courts, mins, ids)}
-          className="w-full bg-primary disabled:bg-gray-300 text-white rounded-2xl py-4 font-extrabold"
-        >
-          <Play className="inline mr-2" size={18} />
-          BẮT ĐẦU BUỔI CHƠI
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            disabled={ids.length < 4 || !courts.length}
+            onClick={() => createSession(courts, mins, ids, 'CỐ ĐỊNH')}
+            className="w-full bg-primary disabled:bg-gray-300 text-white rounded-2xl py-4 font-extrabold flex items-center justify-center text-sm sm:text-base"
+          >
+            <Play className="inline mr-1" size={18} />
+            ĐÁNH CỐ ĐỊNH
+          </button>
+          <button
+            disabled={ids.length < 4 || !courts.length}
+            onClick={() => createSession(courts, mins, ids, 'VÃNG LAI')}
+            className="w-full bg-emerald-600 disabled:bg-gray-300 text-white rounded-2xl py-4 font-extrabold flex items-center justify-center text-sm sm:text-base"
+          >
+            <Play className="inline mr-1" size={18} />
+            ĐÁNH VÃNG LAI
+          </button>
+        </div>
       </div>
     );
   }
@@ -258,7 +268,9 @@ export default function SessionPage() {
     <div className="pb-24 space-y-4">
       <header className="bg-primary text-white rounded-2xl p-4 flex justify-between items-start">
         <div>
-          <small className="text-teal-100 font-bold tracking-wide">ĐANG CHƠI</small>
+          <small className="text-teal-100 font-bold tracking-wide uppercase">
+            ĐANG CHƠI · {currentSession.sessionType === 'VÃNG LAI' ? 'VÃNG LAI' : 'CỐ ĐỊNH'}
+          </small>
           <b className="block text-lg">
             {new Date(currentSession.date).toLocaleDateString('vi-VN')}
           </b>

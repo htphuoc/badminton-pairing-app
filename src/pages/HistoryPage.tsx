@@ -66,6 +66,9 @@ export default function HistoryPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-extrabold text-primary">📅 {dateStr}</span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${s.sessionType === 'VÃNG LAI' ? 'bg-emerald-600' : 'bg-primary'} text-white`}>
+                  {s.sessionType === 'VÃNG LAI' ? 'Vãng lai' : 'Cố định'}
+                </span>
                 <span className="text-xs text-gray-500">
                   {costs.participants.length} người · {s.matches.length} trận · {s.numberOfCourts} sân
                   · <b className="text-primary">{moneyK(costs.total)}</b>
@@ -126,7 +129,9 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
       <div className="bg-gray-50 w-full max-w-md max-h-[95vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl pb-6">
         <header className="bg-primary text-white p-5 flex justify-between items-start">
           <div>
-            <p className="text-xs font-bold tracking-widest text-teal-100">BẢNG TỔNG KẾT</p>
+            <p className="text-xs font-bold tracking-widest text-teal-100 uppercase">
+              BẢNG TỔNG KẾT · {session.sessionType === 'VÃNG LAI' ? 'VÃNG LAI' : 'CỐ ĐỊNH'}
+            </p>
             <h3 className="text-xl font-extrabold leading-tight">{dateStr}</h3>
             <p className="text-xs text-teal-100 mt-1">
               {session.numberOfCourts} sân · {session.matches.length} trận · {calc.participants.length} người

@@ -126,6 +126,8 @@ export interface Session {
 
   status: "PLANNED" | "RUNNING" | "FINISHED";
 
+  sessionType?: "CỐ ĐỊNH" | "VÃNG LAI";
+
   createdAt: string;
   updatedAt: string;
 }

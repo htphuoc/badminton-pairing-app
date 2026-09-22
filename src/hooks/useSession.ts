@@ -26,7 +26,7 @@ export function useSession() {
     StorageService.saveSessions(updatedSessions);
   };
 
-  const createSession = (courtNumbers: number[], durationMinutes: number, selectedPlayerIds: string[]) => {
+  const createSession = (courtNumbers: number[], durationMinutes: number, selectedPlayerIds: string[], sessionType: 'CỐ ĐỊNH' | 'VÃNG LAI' = 'CỐ ĐỊNH') => {
     const players = StorageService.getPlayers();
     const settings = StorageService.getSettings();
     const now = new Date();
@@ -59,6 +59,10 @@ export function useSession() {
       ]),
     );
 
+    const baseRate = sessionType === 'VÃNG LAI' 
+      ? (settings.courtFeeCasualPerHour ?? settings.courtFeeFixedPerHour ?? settings.courtFeePerHour)
+      : (settings.courtFeeFixedPerHour ?? settings.courtFeePerHour);
+
     const newSession: Session = {
       id: uuidv4(),
       date: localDateStr,
@@ -68,7 +72,7 @@ export function useSession() {
       initialCourtNumbers: sorted,
       courtMeta,
       courtFees: Object.fromEntries(
-        sorted.map(court => [String(court), settings.courtFeeFixedPerHour ?? settings.courtFeePerHour]),
+        sorted.map(court => [String(court), baseRate]),
       ),
       shuttleCount: 15,
       plannedDurationMinutes: durationMinutes,
@@ -77,6 +81,7 @@ export function useSession() {
       matches: [],
       costs: settings,
       status: 'PLANNED',
+      sessionType,
       createdAt: nowIso,
       updatedAt: nowIso,
     };
