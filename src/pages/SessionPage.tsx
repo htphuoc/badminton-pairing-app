@@ -12,6 +12,14 @@ import type { Gender, MemberType, SkillLevel } from '../models/types';
 const label = (m: number) =>
   `${Math.floor(m / 60)}h ${m % 60 > 0 ? (m % 60) + 'm' : ''}`.trim() || '0m';
 
+const skillLabel = (s: SkillLevel | string) => {
+  if (s === 'Y') return 'Yếu';
+  if (s === 'TBY') return 'Trung Bình Yếu';
+  if (s === 'TB') return 'Trung Bình';
+  if (s === 'K') return 'Khá';
+  return s;
+};
+
 function MatchTypeBadge({ type }: { type: string }) {
   const colors: Record<string, string> = {
     'ĐÔI NAM': 'bg-blue-600 text-white',
@@ -200,7 +208,7 @@ export default function SessionPage() {
                   <div className="min-w-0 pr-4">
                     <b className="text-sm block truncate">{p.name}</b>
                     <span className="text-[11px] text-gray-500 font-bold">
-                      {p.skillLevel} · {matches}tr
+                      {skillLabel(p.skillLevel)} · {matches}C
                     </span>
                     <span className="block text-[10px] text-amber-700 font-bold">
                       {memberLabel(p.memberType)}
@@ -398,7 +406,7 @@ export default function SessionPage() {
                   <div className="min-w-0">
                     <span className="font-bold text-sm truncate block">{sp.playerName}</span>
                     <span className="text-[11px] text-gray-500 font-bold">
-                      {info.skillLevel} · {sp.matchesPlayed}tr · {memberLabel(info.memberType)}
+                      {skillLabel(info.skillLevel)} · {sp.matchesPlayed}C · {memberLabel(info.memberType)}
                     </span>
                   </div>
                 </div>
@@ -463,7 +471,7 @@ export default function SessionPage() {
                       <div className="min-w-0 pr-4">
                         <b className="text-sm block truncate">{p.name}</b>
                         <span className="text-[11px] text-gray-500 font-bold">
-                          {p.skillLevel} · {matches}tr
+                          {skillLabel(p.skillLevel)} · {matches}C
                         </span>
                         <span className="block text-[10px] text-amber-700 font-bold">
                           {memberLabel(p.memberType)}
@@ -592,7 +600,7 @@ export default function SessionPage() {
                       <span className="min-w-0">
                         <b className="block truncate">{sp.playerName}</b>
                         <small className="text-gray-400">
-                          {info.skillLevel} · {sp.matchesPlayed}tr · {memberLabel(info.memberType)}
+                          {skillLabel(info.skillLevel)} · {sp.matchesPlayed}C · {memberLabel(info.memberType)}
                         </small>
                       </span>
                     </span>
@@ -626,7 +634,7 @@ export default function SessionPage() {
               }}
               className="mt-4 w-full bg-primary disabled:bg-gray-300 text-white rounded-xl py-3 font-bold"
             >
-              XÁC NHẬN BẮT ĐẦU
+              VÀO SÂN
             </button>
           </div>
         </div>
@@ -662,7 +670,7 @@ export default function SessionPage() {
                       <GenderAvatar gender={info.gender} size={32} />
                       <div className="min-w-0">
                         <b className="block text-sm truncate">{info.name}</b>
-                        <span className="text-[11px] text-gray-500 font-bold">{info.skillLevel}</span>
+                        <span className="text-[11px] text-gray-500 font-bold">{skillLabel(info.skillLevel)}</span>
                       </div>
                     </div>
                   );
@@ -677,7 +685,7 @@ export default function SessionPage() {
                       <GenderAvatar gender={info.gender} size={32} />
                       <div className="min-w-0">
                         <b className="block text-sm truncate">{info.name}</b>
-                        <span className="text-[11px] text-gray-500 font-bold">{info.skillLevel}</span>
+                        <span className="text-[11px] text-gray-500 font-bold">{skillLabel(info.skillLevel)}</span>
                       </div>
                     </div>
                   );

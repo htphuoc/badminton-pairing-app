@@ -6,6 +6,14 @@ import GenderAvatar from '../components/GenderAvatar';
 import { StorageService } from '../storage/storage';
 import { careerMatchCount } from '../utils/costCalc';
 
+const skillLabel = (s: SkillLevel | string) => {
+  if (s === 'Y') return 'Yếu';
+  if (s === 'TBY') return 'Trung Bình Yếu';
+  if (s === 'TB') return 'Trung Bình';
+  if (s === 'K') return 'Khá';
+  return s;
+};
+
 export default function PlayersPage() {
   const { players, addPlayer, updatePlayer, removePlayer } = usePlayers();
   const [showForm, setShowForm] = useState(false);
@@ -144,12 +152,12 @@ export default function PlayersPage() {
                 <div className="min-w-0">
                   <h4 className="font-bold text-gray-800 truncate">{p.name}</h4>
                   <div className="flex flex-wrap gap-1.5 mt-1 text-[11px] font-bold">
-                    <span className="rounded-full bg-teal-50 text-primary px-2 py-0.5">{p.skillLevel}</span>
+                    <span className="rounded-full bg-teal-50 text-primary px-2 py-0.5">{skillLabel(p.skillLevel)}</span>
                     <span className="rounded-full bg-amber-50 text-amber-700 px-2 py-0.5 flex gap-1 items-center">
                       <ShieldCheck size={12} />
                       {p.memberType === 'CỐ ĐỊNH' ? 'Cố định' : 'Vãng lai'}
                     </span>
-                    <span className="rounded-full bg-gray-100 text-gray-600 px-2 py-0.5">{matches} trận</span>
+                    <span className="rounded-full bg-gray-100 text-gray-600 px-2 py-0.5">{matches}C</span>
                   </div>
                 </div>
               </div>

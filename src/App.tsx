@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import PlayersPage from './pages/PlayersPage';
 import SessionPage from './pages/SessionPage';
 import HistoryPage from './pages/HistoryPage';
@@ -10,7 +10,7 @@ export default function App() {
     <BrowserRouter>
       <div className="min-h-screen pb-20">
         <header className="bg-white/90 backdrop-blur shadow-sm sticky top-0 z-10 border-b border-teal-50">
-          <div className="px-4 py-3 flex items-center justify-center gap-2">
+          <Link to="/session" className="px-4 py-3 flex items-center justify-center gap-2">
             <img
               src="/logo.jpg"
               alt="Cầu Lông 360°"
@@ -19,12 +19,13 @@ export default function App() {
             <h1 className="text-xl font-bold text-primary tracking-wide">
               CẦU LÔNG 360°
             </h1>
-          </div>
+          </Link>
         </header>
 
         <main className="p-4 max-w-md mx-auto">
           <Routes>
-            <Route path="/" element={<PlayersPage />} />
+            <Route path="/" element={<Navigate to="/session" replace />} />
+            <Route path="/players" element={<PlayersPage />} />
             <Route path="/session" element={<SessionPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/settings" element={<SettingsPage />} />
@@ -40,7 +41,7 @@ export default function App() {
             <Clock size={24} />
             <span className="text-xs mt-1">Tổng kết</span>
           </NavLink>
-          <NavLink to="/" className={({ isActive }) => `flex flex-col items-center ${isActive ? 'text-primary font-bold' : 'text-gray-400'}`}>
+          <NavLink to="/players" className={({ isActive }) => `flex flex-col items-center ${isActive ? 'text-primary font-bold' : 'text-gray-400'}`}>
             <Users size={24} />
             <span className="text-xs mt-1">Thành viên</span>
           </NavLink>
