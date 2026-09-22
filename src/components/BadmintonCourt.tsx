@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Gender } from '../models/types';
 import GenderAvatar from './GenderAvatar';
 
@@ -42,10 +42,16 @@ const xLongR = x1 - 0.76 * M;
 /** Open green inside each service box — no court line crosses these rectangles. */
 const SERVICE_SLOTS = [
   { key: 'tl', x: xLongL, y: ySinglesTop, w: xShortL - xLongL, h: yMid - ySinglesTop },
-  { key: 'bl', x: xLongL, y: yMid, w: xShortL - xLongL, h: ySinglesBot - yMid },
+  { key: 'bl', x: xLongL, y: yMid,        w: xShortL - xLongL, h: ySinglesBot - yMid },
   { key: 'tr', x: xShortR, y: ySinglesTop, w: xLongR - xShortR, h: yMid - ySinglesTop },
-  { key: 'br', x: xShortR, y: yMid, w: xLongR - xShortR, h: ySinglesBot - yMid },
+  { key: 'br', x: xShortR, y: yMid,        w: xLongR - xShortR, h: ySinglesBot - yMid },
 ] as const;
+
+/** Centre of each service box in SVG coords */
+const PLAYER_CENTERS = SERVICE_SLOTS.map(s => ({
+  x: s.x + s.w / 2,
+  y: s.y + s.h / 2,
+}));
 
 function useElapsedMinutes(startTime?: string) {
   const [mins, setMins] = useState(0);
@@ -67,9 +73,9 @@ function PlayerInBox({ player, box }: { player: CourtPlayer; box: (typeof SERVIC
     <div
       className="absolute flex flex-col items-center justify-center gap-0.5 px-1 overflow-hidden pointer-events-none"
       style={{
-        left: `${(box.x / VB_W) * 100}%`,
-        top: `${(box.y / VB_H) * 100}%`,
-        width: `${(box.w / VB_W) * 100}%`,
+        left:   `${(box.x / VB_W) * 100}%`,
+        top:    `${(box.y / VB_H) * 100}%`,
+        width:  `${(box.w / VB_W) * 100}%`,
         height: `${(box.h / VB_H) * 100}%`,
       }}
     >
@@ -82,6 +88,113 @@ function PlayerInBox({ player, box }: { player: CourtPlayer; box: (typeof SERVIC
       </span>
     </div>
   );
+}
+
+/** SVG quả cầu lông — đầu nằm dưới, lông xòe lên trên */
+function ShuttlecockSVG({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 120"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ display: 'block' }}
+    >
+      {/* Lông — 8 cánh xòe từ đỉnh đầu */}
+      {[...Array(8)].map((_, i) => {
+        const angle = (i / 8) * Math.PI * 2;
+        const tipX = 50 + Math.sin(angle) * 38;
+        const tipY = 5 + (1 - Math.cos(angle * 0.5)) * 8;
+        return (
+          <path
+            key={i}
+            d={`M50,55 Q${50 + Math.sin(angle) * 20},${30} ${tipX},${tipY}`}
+            stroke="rgba(255,255,255,0.92)"
+            strokeWidth="3"
+            fill="none"
+            strokeLinecap="round"
+          />
+        );
+      })}
+      {/* Vòng đỉnh nối các cánh */}
+      <ellipse cx="50" cy="12" rx="36" ry="10" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" fill="none" />
+      {/* Thân nút — hình bán cầu */}
+      <path
+        d="M38,55 Q38,80 50,82 Q62,80 62,55 Q56,58 50,58 Q44,58 38,55Z"
+        fill="white"
+        opacity="0.95"
+      />
+      <ellipse cx="50" cy="55" rx="12" ry="5" fill="white" opacity="0.9" />
+    </svg>
+  );
+}
+
+/** Hook animation quả cầu bay giữa 4 vị trí player */
+function useShuttlecock(containerRef: React.RefObject<HTMLDivElement | null>) {
+  // pos tính theo % của container width/height
+  const [pos, setPos] = useState({ x: 50, y: 50 });
+  const [angle, setAngle] = useState(0); // góc bay (độ)
+  const rafRef = useRef<number>(0);
+  const stateRef = useRef({
+    x: 50, y: 50,
+    targetIdx: 2,
+    speed: 0.8, // % per frame — nhanh
+  });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    /** Chuyển SVG coords → % của container */
+    const toPercent = (svgX: number, svgY: number) => ({
+      px: (svgX / VB_W) * 100,
+      py: (svgY / VB_H) * 100,
+    });
+
+    const targets = PLAYER_CENTERS.map(c => toPercent(c.x, c.y));
+
+    let lastTime = performance.now();
+
+    const step = (now: number) => {
+      const dt = Math.min(now - lastTime, 50); // cap 50ms
+      lastTime = now;
+
+      const s = stateRef.current;
+      const target = targets[s.targetIdx];
+      const dx = target.px - s.x;
+      const dy = target.py - s.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      // Tốc độ tính theo % per ms — bay rất nhanh
+      const speed = s.speed * dt;
+
+      if (dist < speed + 0.3) {
+        // Đến nơi → chọn target mới (bên sân đối diện, ngẫu nhiên)
+        s.x = target.px;
+        s.y = target.py;
+
+        // Cross-net logic: nếu đang ở bên trái (0,1) → qua phải (2,3); ngược lại
+        const isLeft = s.targetIdx < 2;
+        const nextPool = isLeft ? [2, 3] : [0, 1];
+        s.targetIdx = nextPool[Math.floor(Math.random() * 2)];
+        s.speed = 0.6 + Math.random() * 0.5; // ngẫu nhiên tốc độ
+      } else {
+        s.x += (dx / dist) * speed;
+        s.y += (dy / dist) * speed;
+      }
+
+      const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+      setPos({ x: s.x, y: s.y });
+      setAngle(angleDeg);
+
+      rafRef.current = requestAnimationFrame(step);
+    };
+
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [containerRef]);
+
+  return { pos, angle };
 }
 
 /**
@@ -102,9 +215,15 @@ export default function BadmintonCourt({
     : '';
   const players = [topLeft, bottomLeft, topRight, bottomRight];
 
+  const courtRef = useRef<HTMLDivElement>(null);
+  const { pos, angle } = useShuttlecock(courtRef);
+
+  // Kích thước quả cầu ~ 1/2 avatar (avatar=30 → cầu=15)
+  const SHUTTLE_SIZE = 15;
+
   return (
     <div className="w-full overflow-hidden" style={{ background: '#2f9a46' }}>
-      <div className="relative">
+      <div className="relative" ref={courtRef}>
         <svg
           viewBox={`0 0 ${VB_W} ${VB_H}`}
           xmlns="http://www.w3.org/2000/svg"
@@ -124,18 +243,28 @@ export default function BadmintonCourt({
             <line x1={xShortR} y1={yMid} x2={x1} y2={yMid} />
           </g>
           <line
-            x1={netX}
-            y1={y0}
-            x2={netX}
-            y2={y1}
-            stroke="white"
-            strokeWidth="2.25"
-            strokeDasharray="7 6"
+            x1={netX} y1={y0} x2={netX} y2={y1}
+            stroke="white" strokeWidth="2.25" strokeDasharray="7 6"
           />
         </svg>
+
         {SERVICE_SLOTS.map((box, i) => (
           <PlayerInBox key={box.key} box={box} player={players[i]} />
         ))}
+
+        {/* Quả cầu lông bay */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: `${pos.x}%`,
+            top:  `${pos.y}%`,
+            transform: `translate(-50%, -50%) rotate(${angle}deg)`,
+            filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.8))',
+            willChange: 'transform, left, top',
+          }}
+        >
+          <ShuttlecockSVG size={SHUTTLE_SIZE} />
+        </div>
       </div>
 
       <div style={{ background: '#1b5e2a' }} className="flex items-center justify-between px-3 pb-1 pt-1.5">
