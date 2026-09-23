@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Clock3, MapPin, Play, Plus, Shuffle, UserPlus, X } from 'lucide-react';
+import { Check, Clock3, Play, Plus, Shuffle, UserPlus, X } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { usePlayers } from '../hooks/usePlayers';
 import BadmintonCourt from '../components/BadmintonCourt';
@@ -130,15 +130,17 @@ export default function SessionPage() {
   if (!currentSession) {
     return (
       <div className="pb-24 space-y-4">
-        <h2 className="text-xl font-extrabold uppercase">TẠO BUỔI CHƠI</h2>
+        <h2 className="text-4xl font-black uppercase text-center text-slate-800 tracking-tight">TẠO BUỔI CHƠI</h2>
 
-        <section className="bg-white rounded-2xl p-4 space-y-4">
-          <div className="flex justify-between font-bold">
-            <span>
-              <Clock3 className="inline mr-2 text-primary" size={18} />
+        <section className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
+          <div className="flex justify-between font-bold text-gray-700">
+            <span className="uppercase text-xs tracking-wide text-gray-500">
               Thời gian
             </span>
-            <b className="text-primary">{label(mins)}</b>
+            <span className="flex items-center text-2xl font-bold text-slate-800">
+              <Clock3 className="inline mr-2 text-primary" size={24} />
+              {label(mins)}
+            </span>
           </div>
           <input
             className="w-full accent-primary"
@@ -149,9 +151,15 @@ export default function SessionPage() {
             value={mins}
             onChange={e => setMins(+e.target.value)}
           />
+          <div className="flex justify-between text-xs text-gray-400 font-medium px-1">
+            <span>15p</span>
+            <span>3h</span>
+            <span>6h</span>
+          </div>
+        </section>
 
-          <b>
-            <MapPin className="inline mr-2 text-primary" size={18} />
+        <section className="bg-white rounded-2xl p-4 space-y-3 shadow-sm">
+          <b className="uppercase text-xs tracking-wide text-gray-500 block mb-2">
             Chọn sân
           </b>
           <div className="grid grid-cols-4 gap-2">
@@ -161,35 +169,36 @@ export default function SessionPage() {
                 onClick={() =>
                   setCourts(x => (x.includes(c) ? x.filter(i => i !== c) : [...x, c]))
                 }
-                className={`rounded-xl py-2 text-sm font-bold ${
-                  courts.includes(c) ? 'bg-primary text-white' : 'border border-teal-100'
+                className={`rounded-xl py-3 text-2xl font-black transition-colors border ${
+                  courts.includes(c) ? 'bg-primary border-primary text-white' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-100'
                 }`}
               >
-                Sân {c}
+                {c}
               </button>
             ))}
           </div>
         </section>
 
-        {/* Compact member grid */}
-        <section className="bg-white rounded-2xl overflow-hidden">
-          <div className="p-3 flex justify-between border-b border-teal-50 items-center">
-            <b className="text-sm">THÀNH VIÊN THAM GIA</b>
-            <div className="flex gap-2">
+        <section className="bg-white rounded-2xl overflow-hidden shadow-sm p-4">
+          <div className="flex justify-between items-center mb-3">
+            <b className="uppercase text-xs tracking-wide text-gray-500">
+              THÀNH VIÊN THAM GIA ({players.length})
+            </b>
+            <div className="flex gap-2 bg-gray-50 p-1 rounded-lg">
               <button
                 onClick={() =>
                   setIds(players.filter(p => p.memberType === 'CỐ ĐỊNH').map(p => p.id))
                 }
-                className="text-xs text-primary font-bold"
+                className="text-xs px-3 py-1.5 bg-primary text-white font-bold rounded-md shadow-sm"
               >
-                Cố định
+                CỐ ĐỊNH
               </button>
-              <button onClick={() => setIds([])} className="text-xs text-gray-400 font-bold">
-                Bỏ chọn
+              <button onClick={() => setIds([])} className="text-xs px-3 py-1.5 text-gray-500 font-bold hover:bg-gray-200 rounded-md transition-colors">
+                BỎ CHỌN
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 p-2">
+          <div className="grid grid-cols-2 gap-2">
             {[...players]
               .sort((a, b) => (a.memberType === 'CỐ ĐỊNH' ? -1 : 1) - (b.memberType === 'CỐ ĐỊNH' ? -1 : 1))
               .map(p => {
@@ -199,26 +208,39 @@ export default function SessionPage() {
                 <button
                   key={p.id}
                   onClick={() => toggle(p.id)}
-                  className={`relative text-left rounded-xl p-2 flex gap-2 items-start transition-all ${
+                  className={`relative text-left rounded-xl p-2 flex gap-2 items-center transition-all ${
                     selected
-                      ? 'border-4 border-primary bg-teal-50/70 shadow-sm'
-                      : 'border border-teal-100 bg-white'
+                      ? 'border-[5px] border-primary/50 bg-teal-50/30'
+                      : 'border-[5px] border-transparent bg-white shadow-[0_0_0_1px_rgba(243,244,246,1)] hover:shadow-[0_0_0_1px_rgba(229,231,235,1)]'
                   }`}
                 >
-                  {selected && (
-                    <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary text-white grid place-items-center">
-                      <Check size={12} />
+                  <div className="relative">
+                    <GenderAvatar gender={p.gender} size={36} />
+                    <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] bg-white shadow-sm ring-1 ring-black/5 ${p.gender === 'FEMALE' ? 'text-pink-500' : 'text-blue-500'}`}>
+                       {p.gender === 'FEMALE' ? '♀' : '♂'}
                     </span>
-                  )}
-                  <GenderAvatar gender={p.gender} size={36} />
-                  <div className="min-w-0 pr-4">
-                    <b className="text-sm block truncate">{p.name}</b>
-                    <span className="text-[11px] text-gray-500 font-bold">
-                      {skillLabel(p.skillLevel)} · {matches}C
-                    </span>
-                    <span className="block text-[10px] text-amber-700 font-bold">
-                      {memberLabel(p.memberType)}
-                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <b className="text-sm block truncate text-slate-800 leading-tight mb-0.5">{p.name}</b>
+                    <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
+                      <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                        {skillLabel(p.skillLevel)}
+                        <span className={`w-1.5 h-1.5 rounded-full ${p.skillLevel === 'Y' ? 'bg-pink-400' : p.skillLevel === 'TBY' ? 'bg-purple-400' : p.skillLevel === 'TB' ? 'bg-blue-400' : p.skillLevel === 'K' ? 'bg-teal-400' : 'bg-emerald-400'}`}></span>
+                        {matches}xC
+                      </span>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0 text-white ${p.memberType === 'CỐ ĐỊNH' ? 'bg-orange-400' : 'bg-blue-500'}`}>
+                        {memberLabel(p.memberType)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 px-1">
+                    {selected ? (
+                      <div className="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center shadow-sm">
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <div className="w-5 h-5 rounded-full border-2 border-gray-200"></div>
+                    )}
                   </div>
                 </button>
               );
