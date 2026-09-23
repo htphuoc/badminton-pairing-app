@@ -90,12 +90,48 @@ export function useSession() {
 
   const endSession = () => {
     if (!currentSession) return;
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    // End all active matches
+    let nextMatches = [...currentSession.matches];
+    let nextPlayers = [...currentSession.players];
+
+    const activeMatches = nextMatches.filter(m => m.status !== 'COMPLETED');
+    
+    for (const match of activeMatches) {
+      const startTime = new Date(match.startTime || nowIso);
+      const diffMins = Math.round((now.getTime() - startTime.getTime()) / 60000);
+      const matchPlayers = [...match.team1, ...match.team2];
+
+      nextMatches = nextMatches.map(m =>
+        m.id === match.id
+          ? { ...m, status: 'COMPLETED' as const, endTime: nowIso, durationMinutes: diffMins }
+          : m
+      );
+
+      nextPlayers = nextPlayers.map(p => {
+        if (matchPlayers.includes(p.playerId)) {
+          return {
+            ...p,
+            attendance: 'WAITING' as const,
+            matchesPlayed: p.matchesPlayed + 1,
+            totalMinutesPlayed: p.totalMinutesPlayed + diffMins,
+            waitingSince: nowIso,
+          };
+        }
+        return p;
+      });
+    }
+
     save({
       ...currentSession,
       status: 'FINISHED',
-      endTime: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      endTime: nowIso,
+      updatedAt: nowIso,
       shuttleCount: currentSession.shuttleCount ?? 15,
+      matches: nextMatches,
+      players: nextPlayers,
     });
     setCurrentSession(null);
   };
