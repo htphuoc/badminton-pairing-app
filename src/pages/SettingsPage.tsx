@@ -133,11 +133,11 @@ export default function SettingsPage() {
               key={c}
               type="button"
               onClick={() => toggleCourtForDay(c)}
-              className={`rounded-xl py-2 text-sm font-bold ${
-                dayCourts.includes(c) ? 'bg-primary text-white' : 'border border-teal-100'
+              className={`rounded-xl py-3 text-2xl font-black transition-colors border ${
+                dayCourts.includes(c) ? 'bg-primary border-primary text-white' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-100'
               }`}
             >
-              Sân {c}
+              {c}
             </button>
           ))}
         </div>
@@ -150,7 +150,8 @@ export default function SettingsPage() {
 
       <section className="bg-white rounded-2xl p-5 border border-teal-50 shadow-sm">
         <h3 className="font-extrabold flex gap-2 items-center">
-          <Percent size={18} className="text-primary" />% ƯU ĐÃI CẦU THỦ NỮ
+          <Percent size={18} className="text-primary" />
+          ƯU ĐÃI CẦU THỦ NỮ
         </h3>
         <p className="text-sm text-gray-500 mt-1">Tiền phải trả của nữ thấp hơn nam theo tỷ lệ này.</p>
         <div className="flex items-center gap-3 mt-4">

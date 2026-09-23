@@ -115,9 +115,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
     .filter(p => session.players.find(sp => sp.playerId === p.playerId)?.hasPaid)
     .reduce((sum, p) => sum + calc.owed(p), 0);
 
-  const totalRemaining = calc.participants
-    .filter(p => !session.players.find(sp => sp.playerId === p.playerId)?.hasPaid)
-    .reduce((sum, p) => sum + calc.owed(p), 0);
+  const totalRemaining = calc.total - totalPaid;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/55 flex items-end sm:items-center justify-center">
