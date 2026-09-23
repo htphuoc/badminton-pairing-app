@@ -159,8 +159,8 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
           <div className="grid grid-cols-3 gap-2">
             <CostCard icon={<Banknote size={18} />} label="Tiền sân" value={calc.courtCost} />
 
-            <div className="bg-white rounded-2xl p-2 shadow-sm border border-teal-100 flex flex-col items-center justify-center">
-              <label className="text-[10px] font-extrabold block text-primary uppercase text-center mb-1.5 leading-tight">
+            <div className="bg-primary text-white rounded-2xl p-2 shadow-sm border border-primary flex flex-col items-center justify-center">
+              <label className="text-[10px] font-extrabold block uppercase text-center mb-1.5 leading-tight text-white/90">
                 Số quả cầu
               </label>
               <input
@@ -169,9 +169,9 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
                 value={session.shuttleCount ?? 15}
                 onChange={e => setShuttle(+e.target.value || 0)}
                 disabled={session.isFinalized}
-                className="w-14 text-center rounded-md px-1 py-1 border border-teal-200 text-sm font-bold text-primary focus:outline-none focus:border-teal-400 bg-teal-50/50 disabled:opacity-60 disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-500"
+                className="w-14 text-center rounded-md px-1 py-1 border border-teal-600 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-white bg-white disabled:opacity-80 disabled:bg-gray-200"
               />
-              <div className="text-[9px] text-gray-400 mt-1.5 font-medium whitespace-nowrap">
+              <div className="text-[9px] text-teal-100 mt-1.5 font-medium whitespace-nowrap">
                 {pricePerShuttle.toLocaleString('vi-VN')}đ/quả
               </div>
             </div>
@@ -196,23 +196,24 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
             </div>
 
             <div className="rounded-xl p-3 border border-gray-200 flex flex-col items-center">
-              <div className="text-xs font-extrabold text-center uppercase mb-3 text-gray-500">CHIA TIỀN</div>
-              <div className="flex justify-center gap-2 mb-2 w-full">
-                <div className="flex items-center gap-1 border border-blue-200 bg-blue-50/50 rounded px-2 py-1.5 flex-1">
-                  <div className="bg-blue-500 text-white rounded-[4px] w-4 h-4 flex items-center justify-center flex-shrink-0">
-                    <Mars size={11} strokeWidth={3} />
+              {session.costs.splitMethod !== 'BY_MATCHES' && (
+                <div className="flex justify-center gap-2 mb-2 w-full">
+                  <div className="flex items-center gap-1 border border-blue-200 bg-blue-50/50 rounded px-2 py-1.5 flex-1">
+                    <div className="bg-blue-500 text-white rounded-[4px] w-4 h-4 flex items-center justify-center flex-shrink-0">
+                      <Mars size={11} strokeWidth={3} />
+                    </div>
+                    <span className="text-blue-600 font-extrabold text-[11px]">NAM:</span>
+                    <span className="font-bold text-primary text-[11px] ml-auto">{money(costMale)}</span>
                   </div>
-                  <span className="text-blue-600 font-extrabold text-[11px]">NAM:</span>
-                  <span className="font-bold text-primary text-[11px] ml-auto">{money(costMale)}</span>
-                </div>
-                <div className="flex items-center gap-1 border border-pink-200 bg-pink-50/50 rounded px-2 py-1.5 flex-1">
-                  <div className="bg-pink-500 text-white rounded-[4px] w-4 h-4 flex items-center justify-center flex-shrink-0">
-                    <Venus size={11} strokeWidth={3} />
+                  <div className="flex items-center gap-1 border border-pink-200 bg-pink-50/50 rounded px-2 py-1.5 flex-1">
+                    <div className="bg-pink-500 text-white rounded-[4px] w-4 h-4 flex items-center justify-center flex-shrink-0">
+                      <Venus size={11} strokeWidth={3} />
+                    </div>
+                    <span className="text-pink-600 font-extrabold text-[11px]">NỮ:</span>
+                    <span className="font-bold text-primary text-[11px] ml-auto">{money(costFemale)}</span>
                   </div>
-                  <span className="text-pink-600 font-extrabold text-[11px]">NỮ:</span>
-                  <span className="font-bold text-primary text-[11px] ml-auto">{money(costFemale)}</span>
                 </div>
-              </div>
+              )}
               <div className="flex justify-center gap-2 w-full">
                 <div className="flex flex-col items-center justify-center border border-green-200 bg-green-50/50 rounded px-2 py-1.5 flex-1">
                   <span className="text-[10px] text-green-600 font-extrabold uppercase mb-0.5">ĐÃ NHẬN</span>
@@ -283,10 +284,10 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
 
 function CostCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <div className="bg-teal-50 border border-teal-200 rounded-2xl p-2 shadow-sm flex flex-col items-center justify-center">
-      <div className="text-primary mb-1">{icon}</div>
-      <p className="text-[10px] font-extrabold text-primary uppercase text-center mb-0.5 leading-tight">{label}</p>
-      <b className="text-primary text-sm whitespace-nowrap">{money(value)}</b>
+    <div className="bg-primary text-white border border-primary rounded-2xl p-2 shadow-sm flex flex-col items-center justify-center">
+      <div className="text-white/90 mb-1">{icon}</div>
+      <p className="text-[10px] font-extrabold uppercase text-center mb-0.5 leading-tight text-white/90">{label}</p>
+      <b className="text-sm whitespace-nowrap">{money(value)}</b>
     </div>
   );
 }
