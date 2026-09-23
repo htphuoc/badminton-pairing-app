@@ -66,7 +66,7 @@ export default function SettingsPage() {
       <section className="bg-white rounded-2xl p-5 border border-teal-50 shadow-sm space-y-4">
         <h3 className="font-extrabold flex items-center gap-2">
           <SlidersHorizontal size={18} className="text-primary" />
-          CHI PHÍ MẶC ĐỊNH
+          CHI PHÍ
         </h3>
         <NumberField
           label="Giá thuê sân cố định / Giờ (VND)"
@@ -99,7 +99,7 @@ export default function SettingsPage() {
       <section className="bg-white rounded-2xl p-5 border border-teal-50 shadow-sm space-y-4">
         <h3 className="font-extrabold flex items-center gap-2">
           <CalendarDays size={18} className="text-primary" />
-          SÂN MẶC ĐỊNH THEO NGÀY
+          SÂN THUÊ CỐ ĐỊNH
         </h3>
         <p className="text-sm text-gray-500">
           Khi tạo buổi chơi, hệ thống sẽ chọn sẵn các sân đã cấu hình cho ngày tương ứng.

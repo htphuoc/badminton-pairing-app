@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Clock3, Play, Plus, Shuffle, UserPlus, X } from 'lucide-react';
+import { Check, Clock3, Play, Plus, Shuffle, Trash2, UserPlus, X } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { usePlayers } from '../hooks/usePlayers';
 import BadmintonCourt from '../components/BadmintonCourt';
@@ -126,11 +126,12 @@ export default function SessionPage() {
     };
   };
 
-  /* ── TẠO BUỔI CHƠI ── */
+  /* ── CHUẨN BỊ VÀO SÂN ── */
   if (!currentSession) {
+    const defaultCourts = getDefaultCourtsForWeekday(new Date().getDay());
     return (
       <div className="pb-24 space-y-4">
-        <h2 className="text-4xl font-black uppercase text-center text-slate-800 tracking-tight">TẠO BUỔI CHƠI</h2>
+        <h2 className="text-4xl font-black uppercase text-center text-slate-800 tracking-tight">CHUẨN BỊ VÀO SÂN</h2>
 
         <section className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
           <div className="flex justify-between font-bold text-gray-700">
@@ -163,19 +164,26 @@ export default function SessionPage() {
             Chọn sân
           </b>
           <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: 16 }, (_, i) => i + 1).map(c => (
-              <button
-                key={c}
-                onClick={() =>
-                  setCourts(x => (x.includes(c) ? x.filter(i => i !== c) : [...x, c]))
-                }
-                className={`rounded-xl py-3 text-2xl font-black transition-colors border ${
-                  courts.includes(c) ? 'bg-primary border-primary text-white' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-100'
-                }`}
-              >
-                {c}
-              </button>
-            ))}
+            {Array.from({ length: 16 }, (_, i) => i + 1).map(c => {
+              const isDefault = defaultCourts.includes(c);
+              const isSelected = courts.includes(c);
+              return (
+                <button
+                  key={c}
+                  onClick={() => {
+                    if (isDefault) return; // sân đăng ký cố định không thể bỏ chọn
+                    setCourts(x => (x.includes(c) ? x.filter(i => i !== c) : [...x, c]));
+                  }}
+                  className={`rounded-xl py-3 text-2xl font-black transition-colors border ${
+                    isSelected
+                      ? 'bg-primary border-primary text-white'
+                      : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-100'
+                  } ${isDefault ? 'cursor-not-allowed opacity-90' : ''}`}
+                >
+                  {c}
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -372,12 +380,14 @@ export default function SessionPage() {
           <small className="text-teal-100 font-bold tracking-wide uppercase">
             ĐANG CHƠI · {currentSession.sessionType === 'VÃNG LAI' ? 'VÃNG LAI' : 'CỐ ĐỊNH'}
           </small>
-          <b className="block text-lg">
-            {new Date(currentSession.date).toLocaleDateString('vi-VN')}
-          </b>
-          <small className="text-teal-100">
-            {configured.length} sân · {label(currentSession.plannedDurationMinutes || 120)}
-          </small>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <b className="block text-lg">
+              {new Date(currentSession.date).toLocaleDateString('vi-VN')}
+            </b>
+            <small className="text-teal-100 font-semibold">
+              {configured.length} sân · {label(currentSession.plannedDurationMinutes || 120)}
+            </small>
+          </div>
         </div>
         <button
           onClick={() => setConfirmEnd(true)}
@@ -533,7 +543,7 @@ export default function SessionPage() {
                     className="flex-shrink-0 w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-colors"
                     title="Gỡ khỏi danh sách"
                   >
-                    <X size={14} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               );
