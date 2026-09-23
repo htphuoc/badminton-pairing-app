@@ -129,7 +129,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
             </p>
             <h3 className="text-xl font-extrabold leading-tight">{dateStr}</h3>
             <p className="text-xs text-teal-100 mt-1">
-              {session.numberOfCourts} sân · {session.matches.length} trận · {calc.participants.length} người
+              {session.numberOfCourts} sân · {session.matches.length} trận · {calc.participants.length} người · {Math.floor((session.plannedDurationMinutes || 120) / 60)}h{((session.plannedDurationMinutes || 120) % 60) === 0 ? '00' : String((session.plannedDurationMinutes || 120) % 60).padStart(2, '0')} cố định
             </p>
           </div>
           <div className="flex items-center gap-3">

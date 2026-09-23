@@ -374,5 +374,6 @@ export function useSession() {
     confirmAutoMatch,
     startManualMatch,
     endMatch,
+    updateSession: save,
   };
 }

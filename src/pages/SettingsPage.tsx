@@ -24,11 +24,16 @@ const WEEKDAYS: { key: keyof DefaultCourtsByWeekday; label: string }[] = [
   { key: '0', label: 'Chủ Nhật' },
 ];
 
+import { useSession } from '../hooks/useSession';
+
 export default function SettingsPage() {
+  const { currentSession, updateSession } = useSession();
   const [settings, setSettings] = useState<CostSettings>(empty);
   const [activeDay, setActiveDay] = useState<keyof DefaultCourtsByWeekday>('1');
 
   useEffect(() => setSettings(StorageService.getSettings()), []);
+
+
 
   const update = (key: keyof CostSettings, value: number | CostSettings['splitMethod']) =>
     setSettings(s => {
@@ -165,6 +170,9 @@ export default function SettingsPage() {
       <button
         onClick={() => {
           StorageService.saveSettings(settings);
+          if (currentSession && !currentSession.isFinalized) {
+            updateSession({ ...currentSession, costs: settings });
+          }
           alert('Đã lưu cài đặt!');
         }}
         className="w-full bg-primary text-white py-4 rounded-2xl font-extrabold flex justify-center gap-2"
