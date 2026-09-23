@@ -393,7 +393,7 @@ export default function SessionPage() {
           onClick={() => setConfirmEnd(true)}
           className="border border-white/60 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap"
         >
-          KẾT THÚC BUỔI
+          KẾT THÚC & TRẢ TẤT CẢ
         </button>
       </header>
 
