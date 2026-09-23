@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, Percent, Save, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, Percent, Save } from 'lucide-react';
 import { StorageService } from '../storage/storage';
 import type { CostSettings, DefaultCourtsByWeekday } from '../models/types';
 
@@ -64,10 +64,7 @@ export default function SettingsPage() {
       <h2 className="text-xl font-extrabold uppercase">THIẾT LẬP CÀI ĐẶT</h2>
 
       <section className="bg-white rounded-2xl p-5 border border-teal-50 shadow-sm space-y-4">
-        <h3 className="font-extrabold flex items-center gap-2">
-          <SlidersHorizontal size={18} className="text-primary" />
-          CHI PHÍ
-        </h3>
+
         <NumberField
           label="Giá thuê sân cố định / Giờ (VND)"
           value={settings.courtFeeFixedPerHour}

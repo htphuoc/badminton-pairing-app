@@ -92,11 +92,11 @@ function normalizeSettings(raw: Partial<CostSettings> | Record<string, unknown>)
   };
 }
 
-/** Courts configured for a weekday (`Date.getDay()`), or fallback defaults. */
+/** Courts configured for a weekday (`Date.getDay()`), or empty if none configured. */
 export function getDefaultCourtsForWeekday(
   weekday: number,
   settings?: CostSettings,
-  fallback: number[] = [1, 2, 3],
+  fallback: number[] = [],
 ): number[] {
   const cfg = settings ?? StorageService.getSettings();
   const key = String(weekday) as keyof DefaultCourtsByWeekday;
