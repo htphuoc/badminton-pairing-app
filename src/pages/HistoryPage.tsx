@@ -233,7 +233,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
               <span className="text-center">Số C</span>
               <span className="text-center">Số Phút</span>
               <span className="text-right">TIỀN</span>
-              <span className="text-center text-[10px] leading-none">ĐÃ<br/>CHUYỂN</span>
+              <span className="text-center text-[10px] leading-none">ĐÃ<br/>NHẬN</span>
             </div>
             {calc.participants.length === 0 ? (
               <p className="p-4 text-center text-gray-400 text-sm">Không có thành viên tham gia.</p>
