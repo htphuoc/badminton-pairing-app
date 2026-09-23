@@ -56,21 +56,21 @@ export default function HistoryPage() {
           <button
             key={s.id}
             onClick={() => setSelected(s)}
-            className="w-full bg-white rounded-2xl border border-teal-100 px-4 py-3 flex items-center justify-between shadow-sm active:bg-teal-50 text-left"
+            className="w-full bg-white rounded-2xl border border-teal-100 px-4 py-3 flex items-center justify-between shadow-sm active:bg-teal-50 text-left gap-3"
           >
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-extrabold text-primary">📅 {dateStr}</span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${s.sessionType === 'VÃNG LAI' ? 'bg-emerald-600' : 'bg-primary'} text-white`}>
-                  {s.sessionType === 'VÃNG LAI' ? 'Vãng lai' : 'Cố định'}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {costs.participants.length} người · {s.matches.length} trận · {s.numberOfCourts} sân
-                  · <b className="text-primary">{money(costs.total)}</b>
-                </span>
-              </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-sm font-extrabold text-primary block">📅 {dateStr}</span>
+              <span className="text-xs text-gray-500">
+                {costs.participants.length} người · {s.matches.length} trận · {s.numberOfCourts} sân
+              </span>
             </div>
-            <ChevronRight size={18} className="text-teal-400 flex-shrink-0 ml-2" />
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${s.sessionType === 'VÃNG LAI' ? 'bg-emerald-600' : 'bg-primary'} text-white`}>
+                {s.sessionType === 'VÃNG LAI' ? 'Vãng lai' : 'Cố định'}
+              </span>
+              <b className="text-primary text-sm">{money(costs.total)}</b>
+            </div>
+            <ChevronRight size={18} className="text-teal-400 flex-shrink-0" />
           </button>
         );
       })}
@@ -174,7 +174,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
               </div>
             </div>
 
-            <CostCard icon={<ShuttlecockIcon size={18} />} label="Tiền cầu" value={calc.shuttleCost} />
+            <CostCard icon={<ShuttlecockIcon size={22} />} label="Tiền cầu" value={calc.shuttleCost} />
           </div>
 
           <div className="bg-white border border-teal-100 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
@@ -228,10 +228,10 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
           <CourtTimeSection session={session} />
 
           <div className="bg-white border border-teal-100 rounded-2xl overflow-hidden shadow-sm mb-4">
-            <div className="grid grid-cols-[1fr_36px_36px_72px_44px] px-4 py-3 border-b border-teal-100 text-[11px] font-extrabold text-primary uppercase items-center gap-1">
+            <div className="grid grid-cols-[1fr_44px_60px_72px_44px] px-4 py-3 border-b border-teal-100 text-[11px] font-extrabold text-primary uppercase items-center gap-1">
               <span>TÊN</span>
-              <span className="text-center" title="Số trận">TR</span>
-              <span className="text-center" title="Số phút">P</span>
+              <span className="text-center">Số C</span>
+              <span className="text-center">Số Phút</span>
               <span className="text-right">TIỀN</span>
               <span className="text-center text-[10px] leading-none">ĐÃ<br/>CHUYỂN</span>
             </div>
@@ -241,7 +241,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
               calc.participants.map(p => (
                 <div
                   key={p.playerId}
-                  className="grid grid-cols-[1fr_36px_36px_72px_44px] px-4 py-3 border-b border-gray-100 last:border-0 text-sm items-center gap-1 hover:bg-gray-50"
+                  className="grid grid-cols-[1fr_44px_60px_72px_44px] px-4 py-3 border-b border-gray-100 last:border-0 text-sm items-center gap-1 hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <GenderAvatar gender={genderOf(p)} size={28} />
@@ -354,20 +354,28 @@ function ShuttlecockIcon({ size = 24, className = "" }: { size?: number, classNa
       xmlns="http://www.w3.org/2000/svg"
       width={size}
       height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="0 0 64 64"
+      fill="currentColor"
       className={className}
     >
-      <path d="M4 11h16" />
-      <path d="M6 7h12" />
-      <path d="M8 3h8" />
-      <path d="M12 22c-2.2 0-4-1.8-4-4l2-7h4l2 7c0 2.2-1.8 4-4 4z" />
-      <path d="M4 11l4-8" />
-      <path d="M20 11l-4-8" />
+      {/* Feathers fan */}
+      <ellipse cx="32" cy="20" rx="18" ry="14" fill="currentColor" opacity="0.15" />
+      {/* Individual feather lines */}
+      <line x1="32" y1="38" x2="14" y2="8"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+      <line x1="32" y1="38" x2="20" y2="6"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.75"/>
+      <line x1="32" y1="38" x2="27" y2="5"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.9"/>
+      <line x1="32" y1="38" x2="32" y2="5"  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="32" y1="38" x2="37" y2="5"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.9"/>
+      <line x1="32" y1="38" x2="44" y2="6"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.75"/>
+      <line x1="32" y1="38" x2="50" y2="8"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+      {/* Arc connecting feather tips */}
+      <path d="M14 8 Q32 2 50 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+      {/* Cork base */}
+      <ellipse cx="32" cy="50" rx="7" ry="9" fill="currentColor" opacity="0.85"/>
+      {/* Skirt ring */}
+      <ellipse cx="32" cy="40" rx="7" ry="3" fill="none" stroke="currentColor" strokeWidth="2"/>
+      {/* Cork highlight */}
+      <ellipse cx="30" cy="47" rx="2.5" ry="3.5" fill="white" opacity="0.25"/>
     </svg>
   );
 }
