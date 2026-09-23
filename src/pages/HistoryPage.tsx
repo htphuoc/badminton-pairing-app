@@ -180,17 +180,19 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
           </div>
 
           <div className="bg-white border border-teal-100 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-2">
-              <div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col items-center justify-center flex-1">
                 <p className="text-xs font-bold text-primary uppercase">TỔNG CỘNG</p>
                 <b className="text-3xl text-primary">{money(calc.total)}</b>
-                <p className="text-[11px] text-gray-400 mt-1">Tự động lưu khi nhập</p>
               </div>
-              <img
-                src="/payment-qr.png"
-                className="w-20 h-20 rounded-lg object-contain"
-                alt="Mã QR thanh toán"
-              />
+              <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                <img
+                  src="/payment-qr.png"
+                  className="w-28 h-28 rounded-xl object-contain border border-teal-100 shadow-sm"
+                  alt="Mã QR thanh toán"
+                />
+                <span className="text-[10px] text-gray-500 font-medium">Nguyễn Thị Hồng Dung</span>
+              </div>
             </div>
 
             <div className="rounded-xl p-3 border border-gray-200 flex flex-col items-center">
@@ -211,7 +213,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
                   <span className="font-bold text-primary text-[11px] ml-auto">{money(costFemale)}</span>
                 </div>
               </div>
-              <div className="flex justify-center gap-2 mb-4 w-full">
+              <div className="flex justify-center gap-2 w-full">
                 <div className="flex flex-col items-center justify-center border border-green-200 bg-green-50/50 rounded px-2 py-1.5 flex-1">
                   <span className="text-[10px] text-green-600 font-extrabold uppercase mb-0.5">ĐÃ NHẬN</span>
                   <span className="text-sm font-bold text-green-700">{money(totalPaid)}</span>
@@ -220,10 +222,6 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
                   <span className="text-[10px] text-amber-600 font-extrabold uppercase mb-0.5">Còn lại</span>
                   <span className="text-sm font-bold text-amber-700">{money(totalRemaining)}</span>
                 </div>
-              </div>
-              <div className="text-center w-full">
-                <div className="text-[10px] text-gray-400 font-medium uppercase mb-0.5">CHUYỂN KHOẢN CHO:</div>
-                <div className="text-sm font-extrabold text-primary uppercase">NGUYỄN THỊ HỒNG DUNG</div>
               </div>
             </div>
           </div>
@@ -285,7 +283,7 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
 
 function CostCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <div className="bg-white border border-teal-100 rounded-2xl p-2 shadow-sm flex flex-col items-center justify-center">
+    <div className="bg-teal-50 border border-teal-200 rounded-2xl p-2 shadow-sm flex flex-col items-center justify-center">
       <div className="text-primary mb-1">{icon}</div>
       <p className="text-[10px] font-extrabold text-primary uppercase text-center mb-0.5 leading-tight">{label}</p>
       <b className="text-primary text-sm whitespace-nowrap">{money(value)}</b>
