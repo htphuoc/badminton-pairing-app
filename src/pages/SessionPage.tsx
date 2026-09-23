@@ -226,7 +226,7 @@ export default function SessionPage() {
                       <span className="text-[11px] text-gray-500 flex items-center gap-1">
                         {skillLabel(p.skillLevel)}
                         <span className={`w-1.5 h-1.5 rounded-full ${p.skillLevel === 'Y' ? 'bg-pink-400' : p.skillLevel === 'TBY' ? 'bg-purple-400' : p.skillLevel === 'TB' ? 'bg-blue-400' : p.skillLevel === 'K' ? 'bg-teal-400' : 'bg-emerald-400'}`}></span>
-                        {matches}xC
+                        {matches}C
                       </span>
                       <span className={`text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0 text-white ${p.memberType === 'CỐ ĐỊNH' ? 'bg-orange-400' : 'bg-blue-500'}`}>
                         {memberLabel(p.memberType)}
