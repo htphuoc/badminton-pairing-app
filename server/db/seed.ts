@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'crypto';
 import { db, createTables } from './index';
 import { users, groups, groupSettings, members } from './schema';
 import { eq } from 'drizzle-orm';

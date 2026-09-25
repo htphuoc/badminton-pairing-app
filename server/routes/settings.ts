@@ -4,7 +4,7 @@ import { groupSettings } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { requireAuth, requireRole, resolveHostGroup } from '../middleware/auth';
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'crypto';
 
 const router = Router();
 router.use(requireAuth, requireRole('ADMIN', 'HOST'));
