@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ApiClient } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Trophy } from 'lucide-react';
+
 import { Navigate } from 'react-router-dom';
 
 export function LoginPage() {
