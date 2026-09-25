@@ -3,7 +3,7 @@ import { randomUUID as uuidv4 } from 'crypto';
 import { z } from 'zod';
 import { db } from '../db';
 import { members, groups, sessions, sessionPlayers } from '../db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { requireAuth, requireRole, resolveHostGroup } from '../middleware/auth';
 
 const router = Router();
@@ -55,17 +55,25 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   const query = db.select().from(members);
   const result = await (groupId ? query.where(eq(members.groupId, groupId)) : query);
 
-  // Count career matches per member
-  const withStats = await Promise.all(result.map(async m => {
-    const sps = await db.select({ matchesPlayed: sessionPlayers.matchesPlayed })
-      .from(sessionPlayers)
-      .where(eq(sessionPlayers.memberId, m.id))
-      ;
-    const careerMatches = sps.reduce((sum, sp) => sum + sp.matchesPlayed, 0);
-    return { ...m, careerMatches };
-  }));
+  const memberIds = result.map(m => m.id);
+  const careerByMember = new Map<string, number>();
 
-  res.json(withStats);
+  if (memberIds.length > 0) {
+    const stats = await db
+      .select({
+        memberId: sessionPlayers.memberId,
+        careerMatches: sql<number>`coalesce(sum(${sessionPlayers.matchesPlayed}), 0)`.mapWith(Number),
+      })
+      .from(sessionPlayers)
+      .where(inArray(sessionPlayers.memberId, memberIds))
+      .groupBy(sessionPlayers.memberId);
+
+    for (const row of stats) {
+      careerByMember.set(row.memberId, row.careerMatches);
+    }
+  }
+
+  res.json(result.map(m => ({ ...m, careerMatches: careerByMember.get(m.id) ?? 0 })));
 });
 
 // POST /api/members

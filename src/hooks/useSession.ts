@@ -4,26 +4,23 @@ import type { MatchSuggestion } from '../algorithms/matchingEngine';
 import { ApiClient } from '../lib/api';
 
 export function useSession() {
-  const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchSessions = useCallback(async () => {
+  const fetchCurrentSession = useCallback(async () => {
     try {
-      const data = await ApiClient.get<Session[]>('/sessions');
-      setSessions(data);
-      const active = data.find(s => s.status === 'RUNNING' || s.status === 'PLANNED');
-      setCurrentSession(active || null);
+      const active = await ApiClient.get<Session | null>('/sessions/active');
+      setCurrentSession(active);
     } catch (err) {
-      console.error('Failed to fetch sessions', err);
+      console.error('Failed to fetch active session', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    fetchCurrentSession();
+  }, [fetchCurrentSession]);
 
   const updateSession = async (updatedSession: Session) => {
     try {
@@ -35,7 +32,7 @@ export function useSession() {
         courtFees: updatedSession.courtFees,
         numberOfCourts: updatedSession.numberOfCourts,
       });
-      await fetchSessions();
+      await fetchCurrentSession();
     } catch (err) {
       console.error('Failed to update session', err);
     }
@@ -58,7 +55,7 @@ export function useSession() {
         selectedPlayerIds,
         sessionType
       });
-      await fetchSessions();
+      await fetchCurrentSession();
     } catch (err) {
       console.error('Failed to create session', err); throw err;
     }
@@ -68,7 +65,7 @@ export function useSession() {
     if (!currentSession) return;
     try {
       await ApiClient.post(`/sessions/${currentSession.id}/end`);
-      await fetchSessions();
+      setCurrentSession(null);
     } catch (err) {
       console.error('Failed to end session', err);
     }
@@ -77,10 +74,12 @@ export function useSession() {
   const addPlayersToSession = async (playerIds: string[]) => {
     if (!currentSession || !playerIds.length) return;
     try {
-      for (const id of playerIds) {
-        await ApiClient.post(`/sessions/${currentSession.id}/players`, { memberId: id });
-      }
-      await fetchSessions();
+      await Promise.all(
+        playerIds.map(id =>
+          ApiClient.post(`/sessions/${currentSession.id}/players`, { memberId: id })
+        )
+      );
+      await fetchCurrentSession();
     } catch (err) {
       console.error('Failed to add players', err);
     }
@@ -90,7 +89,7 @@ export function useSession() {
     if (!currentSession) return;
     try {
       await ApiClient.delete(`/sessions/${currentSession.id}/players/${memberId}`);
-      await fetchSessions();
+      await fetchCurrentSession();
     } catch (err) {
       console.error('Failed to remove player', err);
     }
@@ -130,7 +129,6 @@ export function useSession() {
 
     const startedAt = meta?.startedAt || currentSession.startTime || new Date().toISOString();
     const actualMinutes = Math.max(1, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
-    // round up to 30 mins
     const billableMinutes = Math.min(
       Math.ceil(actualMinutes / 30) * 30,
       meta?.plannedMinutes ?? Math.ceil(actualMinutes / 30) * 30,
@@ -199,7 +197,7 @@ export function useSession() {
         type: suggestion.type,
         assignmentMode: 'AUTO'
       });
-      await fetchSessions();
+      await fetchCurrentSession();
     } catch (err) {
       console.error('Failed to confirm match', err);
     }
@@ -215,7 +213,7 @@ export function useSession() {
         type: 'TỰ DO',
         assignmentMode
       });
-      await fetchSessions();
+      await fetchCurrentSession();
     } catch (err) {
       console.error('Failed to start manual match', err);
     }
@@ -225,14 +223,13 @@ export function useSession() {
     if (!currentSession) return;
     try {
       await ApiClient.post(`/sessions/${currentSession.id}/matches/${matchId}/end`);
-      await fetchSessions();
+      await fetchCurrentSession();
     } catch (err) {
       console.error('Failed to end match', err);
     }
   };
 
   return {
-    sessions,
     currentSession,
     loading,
     createSession,
@@ -246,6 +243,6 @@ export function useSession() {
     startManualMatch,
     endMatch,
     updateSession,
-    refreshSession: fetchSessions
+    refreshSession: fetchCurrentSession
   };
 }

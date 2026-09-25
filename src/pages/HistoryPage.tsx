@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Banknote, ChevronRight, Save, X, Mars, Venus } from 'lucide-react';
 import { ApiClient } from '../lib/api';
 import type { Session, Player, SessionPlayer } from '../models/types';
@@ -79,8 +79,21 @@ export default function HistoryPage() {
     }
   };
 
+  const genderLookup = useCallback(
+    (id: string) => players.find(p => p.id === id)?.gender,
+    [players],
+  );
+
+  const sessionCosts = useMemo(() => {
+    const map = new Map<string, CostBreakdown>();
+    for (const s of sessions) {
+      map.set(s.id, calcSessionCosts(s, genderLookup));
+    }
+    return map;
+  }, [sessions, genderLookup]);
+
   const calc = (s: Session): CostBreakdown =>
-    calcSessionCosts(s, id => players.find(p => p.id === id)?.gender);
+    sessionCosts.get(s.id) ?? calcSessionCosts(s, genderLookup);
 
   return (
     <div className="pb-20 space-y-3">

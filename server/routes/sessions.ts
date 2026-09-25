@@ -3,7 +3,7 @@ import { randomUUID as uuidv4 } from 'crypto';
 import { z } from 'zod';
 import { db, sqlite } from '../db';
 import { sessions, sessionPlayers, matches, groups, members, groupSettings } from '../db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { requireAuth, requireRole, resolveHostGroup } from '../middleware/auth';
 import { generateMatchSuggestion, reshuffleSuggestion } from '../algorithms/matchingEngine';
 
@@ -47,6 +47,67 @@ function mapSession(s: typeof sessions.$inferSelect) {
   };
 }
 
+async function attachSessionDetails(rows: typeof sessions.$inferSelect[]) {
+  if (rows.length === 0) return [];
+
+  const sessionIds = rows.map(s => s.id);
+  const [allPlayers, allMatches] = await Promise.all([
+    db.select().from(sessionPlayers).where(inArray(sessionPlayers.sessionId, sessionIds)),
+    db.select().from(matches).where(inArray(matches.sessionId, sessionIds)),
+  ]);
+
+  const playersBySession = new Map<string, typeof allPlayers>();
+  for (const sp of allPlayers) {
+    const list = playersBySession.get(sp.sessionId) ?? [];
+    list.push(sp);
+    playersBySession.set(sp.sessionId, list);
+  }
+
+  const matchesBySession = new Map<string, typeof allMatches>();
+  for (const m of allMatches) {
+    const list = matchesBySession.get(m.sessionId) ?? [];
+    list.push(m);
+    matchesBySession.set(m.sessionId, list);
+  }
+
+  return rows.map(s => ({
+    ...mapSession(s),
+    players: (playersBySession.get(s.id) ?? []).map(sp => ({
+      ...sp,
+      playerId: sp.memberId,
+      hasPaid: sp.hasPaid,
+    })),
+    matches: (matchesBySession.get(s.id) ?? []).map(m => ({
+      ...m,
+      type: m.matchType,
+      team1: p<string[]>(m.team1),
+      team2: p<string[]>(m.team2),
+    })),
+  }));
+}
+
+// GET /api/sessions/active — lightweight endpoint for live session screen
+router.get('/active', async (req: Request, res: Response): Promise<void> => {
+  const groupId = await getGroupId(req);
+  const rows = groupId
+    ? await db.select().from(sessions)
+        .where(and(eq(sessions.groupId, groupId), eq(sessions.status, 'RUNNING')))
+        .orderBy(desc(sessions.createdAt))
+        .limit(1)
+    : await db.select().from(sessions)
+        .where(eq(sessions.status, 'RUNNING'))
+        .orderBy(desc(sessions.createdAt))
+        .limit(1);
+
+  if (rows.length === 0) {
+    res.json(null);
+    return;
+  }
+
+  const [session] = await attachSessionDetails(rows);
+  res.json(session);
+});
+
 // GET /api/sessions
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   const groupId = await getGroupId(req);
@@ -54,22 +115,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     ? await db.select().from(sessions).where(eq(sessions.groupId, groupId)).orderBy(desc(sessions.createdAt))
     : await db.select().from(sessions).orderBy(desc(sessions.createdAt));
 
-  // Attach players and matches counts
-  const result = await Promise.all(rows.map(async s => {
-    const players = await db.select().from(sessionPlayers).where(eq(sessionPlayers.sessionId, s.id));
-    const matchRows = await db.select().from(matches).where(eq(matches.sessionId, s.id));
-    return {
-      ...mapSession(s),
-      players: players.map(sp => ({ ...sp, playerId: sp.memberId, hasPaid: sp.hasPaid })),
-      matches: matchRows.map(m => ({
-        ...m,
-        team1: p<string[]>(m.team1),
-        team2: p<string[]>(m.team2),
-      })),
-    };
-  }));
-
-  res.json(result);
+  res.json(await attachSessionDetails(rows));
 });
 
 const createSessionSchema = z.object({
@@ -180,8 +226,13 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
 
   res.json({
     ...mapSession(session),
-    players,
-    matches: matchRows.map(m => ({ ...m, team1: p<string[]>(m.team1), team2: p<string[]>(m.team2) })),
+    players: players.map(sp => ({ ...sp, playerId: sp.memberId, hasPaid: sp.hasPaid })),
+    matches: matchRows.map(m => ({
+      ...m,
+      type: m.matchType,
+      team1: p<string[]>(m.team1),
+      team2: p<string[]>(m.team2),
+    })),
   });
 });
 

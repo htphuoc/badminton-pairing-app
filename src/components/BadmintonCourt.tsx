@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type { Gender } from '../models/types';
 import GenderAvatar from './GenderAvatar';
 
@@ -129,79 +129,66 @@ function ShuttlecockSVG({ size = 16 }: { size?: number }) {
   );
 }
 
-/** Hook animation quả cầu bay giữa 4 vị trí player */
-function useShuttlecock(containerRef: React.RefObject<HTMLDivElement | null>) {
-  // pos tính theo % của container width/height
-  const [pos, setPos] = useState({ x: 50, y: 50 });
-  const [angle, setAngle] = useState(0); // góc bay (độ)
-  const rafRef = useRef<number>(0);
-  const stateRef = useRef({
-    x: 50, y: 50,
-    targetIdx: 2,
-    speed: 0.2, // chậm, rõ hình dạng
-  });
-
+/** Animate shuttle via direct DOM updates — avoids 60fps React re-renders. */
+function useShuttlecock(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  shuttleRef: React.RefObject<HTMLDivElement | null>,
+) {
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    const shuttle = shuttleRef.current;
+    if (!container || !shuttle) return;
 
-    /** Chuyển SVG coords → % của container */
     const toPercent = (svgX: number, svgY: number) => ({
       px: (svgX / VB_W) * 100,
       py: (svgY / VB_H) * 100,
     });
 
     const targets = PLAYER_CENTERS.map(c => toPercent(c.x, c.y));
-
+    const state = { x: 50, y: 50, targetIdx: 2, speed: 0.2 };
     let lastTime = performance.now();
+    let rafId = 0;
 
     const step = (now: number) => {
-      const dt = Math.min(now - lastTime, 50); // cap 50ms
+      const dt = Math.min(now - lastTime, 50);
       lastTime = now;
 
-      const s = stateRef.current;
-      const target = targets[s.targetIdx];
-      const dx = target.px - s.x;
-      const dy = target.py - s.y;
+      const target = targets[state.targetIdx];
+      const dx = target.px - state.x;
+      const dy = target.py - state.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-
-      // Tốc độ tính theo % per ms — bay rất nhanh
-      const speed = s.speed * dt;
+      const speed = state.speed * dt;
 
       if (dist < speed + 0.3) {
-        // Đến nơi → chọn target mới (bên sân đối diện, ngẫu nhiên)
-        s.x = target.px;
-        s.y = target.py;
-
-        // Cross-net logic: nếu đang ở bên trái (0,1) → qua phải (2,3); ngược lại
-        const isLeft = s.targetIdx < 2;
+        state.x = target.px;
+        state.y = target.py;
+        const isLeft = state.targetIdx < 2;
         const nextPool = isLeft ? [2, 3] : [0, 1];
-        s.targetIdx = nextPool[Math.floor(Math.random() * 2)];
-        s.speed = 0.18 + Math.random() * 0.12; // chậm, rõ hình dạng
+        state.targetIdx = nextPool[Math.floor(Math.random() * 2)];
+        state.speed = 0.18 + Math.random() * 0.12;
       } else {
-        s.x += (dx / dist) * speed;
-        s.y += (dy / dist) * speed;
+        state.x += (dx / dist) * speed;
+        state.y += (dy / dist) * speed;
       }
 
       const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-      setPos({ x: s.x, y: s.y });
-      setAngle(angleDeg);
+      shuttle.style.left = `${state.x}%`;
+      shuttle.style.top = `${state.y}%`;
+      shuttle.style.transform = `translate(-50%, -50%) rotate(${angleDeg}deg)`;
 
-      rafRef.current = requestAnimationFrame(step);
+      rafId = requestAnimationFrame(step);
     };
 
-    rafRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [containerRef]);
-
-  return { pos, angle };
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [containerRef, shuttleRef]);
 }
 
 /**
  * Sân nằm ngang, chỉ đường trắng mảnh trên nền xanh.
  * Avatar + tên nằm giữa 4 ô giao cầu, không đè đường kẻ.
  */
-export default function BadmintonCourt({
+function BadmintonCourt({
   topLeft,
   bottomLeft,
   topRight,
@@ -216,7 +203,8 @@ export default function BadmintonCourt({
   const players = [topLeft, bottomLeft, topRight, bottomRight];
 
   const courtRef = useRef<HTMLDivElement>(null);
-  const { pos, angle } = useShuttlecock(courtRef);
+  const shuttleRef = useRef<HTMLDivElement>(null);
+  useShuttlecock(courtRef, shuttleRef);
 
   // Kích thước quả cầu 30px
   const SHUTTLE_SIZE = 30;
@@ -254,11 +242,12 @@ export default function BadmintonCourt({
 
         {/* Quả cầu lông bay */}
         <div
+          ref={shuttleRef}
           className="absolute pointer-events-none"
           style={{
-            left: `${pos.x}%`,
-            top:  `${pos.y}%`,
-            transform: `translate(-50%, -50%) rotate(${angle}deg)`,
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
             filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.8))',
             willChange: 'transform, left, top',
           }}
@@ -295,3 +284,5 @@ export default function BadmintonCourt({
     </div>
   );
 }
+
+export default memo(BadmintonCourt);
