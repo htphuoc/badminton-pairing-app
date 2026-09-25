@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays, Percent, Save } from 'lucide-react';
-import { StorageService } from '../storage/storage';
 import type { CostSettings, DefaultCourtsByWeekday } from '../models/types';
+import { useSettings } from '../hooks/useSettings';
+import { useSession } from '../hooks/useSession';
 
 const empty: CostSettings = {
   courtFeePerHour: 130000,
@@ -24,16 +25,15 @@ const WEEKDAYS: { key: keyof DefaultCourtsByWeekday; label: string }[] = [
   { key: '0', label: 'Chủ Nhật' },
 ];
 
-import { useSession } from '../hooks/useSession';
-
 export default function SettingsPage() {
   const { currentSession, updateSession } = useSession();
+  const { settings: initialSettings, loading, updateSettings } = useSettings();
   const [settings, setSettings] = useState<CostSettings>(empty);
   const [activeDay, setActiveDay] = useState<keyof DefaultCourtsByWeekday>('1');
 
-  useEffect(() => setSettings(StorageService.getSettings()), []);
-
-
+  useEffect(() => {
+    if (!loading) setSettings(initialSettings);
+  }, [loading, initialSettings]);
 
   const update = (key: keyof CostSettings, value: number | CostSettings['splitMethod']) =>
     setSettings(s => {
@@ -58,6 +58,8 @@ export default function SettingsPage() {
       return { ...s, defaultCourtsByWeekday: map };
     });
   };
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Đang tải...</div>;
 
   return (
     <div className="pb-20 space-y-5">
@@ -140,7 +142,7 @@ export default function SettingsPage() {
         </div>
         {dayCourts.length === 0 && (
           <p className="text-xs text-gray-400">
-            Chưa chọn sân cho ngày này — khi tạo buổi sẽ dùng mặc định Sân 1–3.
+            Chưa chọn sân cho ngày này — khi tạo buổi sẽ không có sân nào được chọn sẵn.
           </p>
         )}
       </section>
@@ -166,12 +168,16 @@ export default function SettingsPage() {
       </section>
 
       <button
-        onClick={() => {
-          StorageService.saveSettings(settings);
-          if (currentSession && !currentSession.isFinalized) {
-            updateSession({ ...currentSession, costs: settings });
+        onClick={async () => {
+          try {
+            await updateSettings(settings);
+            if (currentSession && !currentSession.isFinalized) {
+              await updateSession({ ...currentSession, costs: settings });
+            }
+            alert('Đã lưu cài đặt!');
+          } catch (err) {
+            alert('Lỗi khi lưu cài đặt.');
           }
-          alert('Đã lưu cài đặt!');
         }}
         className="w-full bg-primary text-white py-4 rounded-2xl font-extrabold flex justify-center gap-2"
       >

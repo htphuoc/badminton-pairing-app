@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import { Banknote, ChevronRight, Save, X, Mars, Venus } from 'lucide-react';
-import { StorageService } from '../storage/storage';
+import { ApiClient } from '../lib/api';
 import type { Session, Player, SessionPlayer } from '../models/types';
 import { calcSessionCosts, type CostBreakdown } from '../utils/costCalc';
 import GenderAvatar from '../components/GenderAvatar';
@@ -17,21 +17,51 @@ export default function HistoryPage() {
   const [selected, setSelected] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
 
+  const fetchData = useCallback(async () => {
+    try {
+      const [sessionsData, playersData] = await Promise.all([
+        ApiClient.get<Session[]>('/sessions'),
+        ApiClient.get<Player[]>('/members')
+      ]);
+      const finished = sessionsData
+        .filter(s => s.status === 'FINISHED')
+        .sort((a, b) => (b.endTime || b.date).localeCompare(a.endTime || a.date));
+      setSessions(finished);
+      setPlayers(playersData);
+      
+      // Update selected session if it is currently open
+      if (selected) {
+        const updatedSelected = finished.find(s => s.id === selected.id);
+        if (updatedSelected) setSelected(updatedSelected);
+      }
+    } catch (err) {
+      console.error('Failed to fetch history', err);
+    }
+  }, [selected]);
+
   useEffect(() => {
-    const all = StorageService.getSessions()
-      .filter(s => s.status === 'FINISHED')
-      .sort((a, b) => (b.endTime || b.date).localeCompare(a.endTime || a.date));
-    setSessions(all);
-    setPlayers(StorageService.getPlayers());
+    fetchData();
   }, []);
 
-  const saveSession = (s: Session) => {
-    const all = StorageService.getSessions().map(item => (item.id === s.id ? s : item));
-    StorageService.saveSessions(all);
-    setSessions(
-      all.filter(item => item.status === 'FINISHED').sort((a, b) => (b.endTime || b.date).localeCompare(a.endTime || a.date)),
-    );
-    setSelected(s);
+  const saveSessionSettings = async (s: Session) => {
+    try {
+      await ApiClient.put(`/sessions/${s.id}`, {
+        shuttleCount: s.shuttleCount,
+        isFinalized: s.isFinalized,
+      });
+      fetchData();
+    } catch (err) {
+      console.error('Failed to update session settings', err);
+    }
+  };
+
+  const updatePlayerPayment = async (sessionId: string, playerId: string, hasPaid: boolean) => {
+    try {
+      await ApiClient.put(`/sessions/${sessionId}/players/${playerId}`, { hasPaid });
+      fetchData();
+    } catch (err) {
+      console.error('Failed to update player payment', err);
+    }
   };
 
   const calc = (s: Session): CostBreakdown =>
@@ -50,7 +80,7 @@ export default function HistoryPage() {
       {sessions.map(s => {
         const costs = calc(s);
         const endStr = s.endTime ? new Date(s.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
-        const displayDate = s.endTime ? new Date(s.endTime) : new Date(s.date + 'T00:00:00');
+        const displayDate = s.endTime ? new Date(s.endTime) : new Date((s.sessionDate || s.date) + 'T00:00:00');
         const dateStr = displayDate.toLocaleDateString('vi-VN') + (endStr ? ` - ${endStr}` : '');
         return (
           <button
@@ -61,7 +91,7 @@ export default function HistoryPage() {
             <div className="min-w-0 flex-1">
               <span className="text-sm font-extrabold text-primary block">📅 {dateStr}</span>
               <span className="text-xs text-gray-500">
-                {costs.participants.length} người · {s.matches.length} trận · {s.numberOfCourts} sân
+                {costs.participants.length} người · {s.matches.length} trận · {(s.courtNumbers?.length || 0)} sân
               </span>
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -80,7 +110,8 @@ export default function HistoryPage() {
           session={selected}
           calc={calc(selected)}
           players={players}
-          update={saveSession}
+          updateSettings={saveSessionSettings}
+          updatePayment={updatePlayerPayment}
           close={() => setSelected(null)}
         />
       )}
@@ -92,15 +123,16 @@ interface MoneySheetProps {
   session: Session;
   calc: CostBreakdown;
   players: Player[];
-  update: (s: Session) => void;
+  updateSettings: (s: Session) => void;
+  updatePayment: (sessionId: string, playerId: string, hasPaid: boolean) => void;
   close: () => void;
 }
 
-function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) {
-  const setShuttle = (value: number) => update({ ...session, shuttleCount: value });
+function MoneySheet({ session, calc, players, updateSettings, updatePayment, close }: MoneySheetProps) {
+  const setShuttle = (value: number) => updateSettings({ ...session, shuttleCount: value });
 
   const endStr = session.endTime ? new Date(session.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
-  const displayDate = session.endTime ? new Date(session.endTime) : new Date(session.date + 'T00:00:00');
+  const displayDate = session.endTime ? new Date(session.endTime) : new Date((session.sessionDate || session.date) + 'T00:00:00');
   const dateStr = displayDate.toLocaleDateString('vi-VN') + (endStr ? ` - ${endStr}` : '');
   const pricePerShuttle = session.costs.shuttleFee ?? 28000;
 
@@ -127,20 +159,20 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
             </p>
             <h3 className="text-xl font-extrabold leading-tight">{dateStr}</h3>
             <p className="text-xs text-teal-100 mt-1">
-              {session.numberOfCourts} sân · {session.matches.length} trận · {calc.participants.length} người · {Math.floor((session.plannedDurationMinutes || 120) / 60)}h{((session.plannedDurationMinutes || 120) % 60) === 0 ? '00' : String((session.plannedDurationMinutes || 120) % 60).padStart(2, '0')} cố định
+              {(session.courtNumbers?.length || 0)} sân · {session.matches.length} trận · {calc.participants.length} người · {Math.floor((session.plannedDurationMinutes || 120) / 60)}h{((session.plannedDurationMinutes || 120) % 60) === 0 ? '00' : String((session.plannedDurationMinutes || 120) % 60).padStart(2, '0')} {session.sessionType?.toLowerCase() === 'vãng lai' ? 'vãng lai' : 'cố định'}
             </p>
           </div>
           <div className="flex items-center gap-3">
             {!session.isFinalized ? (
               <button
                 onClick={() => {
-                  if (window.confirm('Chốt sổ sẽ không thể sửa lại số cầu. Bạn có chắc chắn?')) {
-                    update({ ...session, isFinalized: true });
+                  if (window.confirm('CHỐT TIỀN CẦU sẽ không thể sửa lại số cầu. Bạn có chắc chắn?')) {
+                    updateSettings({ ...session, isFinalized: true });
                   }
                 }}
                 className="border border-white/60 hover:bg-white/10 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition"
               >
-                <Save size={16} /> CHỐT SỔ
+                <Save size={16} /> CHỐT TIỀN CẦU
               </button>
             ) : (
               <div className="px-3 py-1.5 rounded-lg text-sm font-bold border border-transparent bg-white/20">
@@ -259,14 +291,16 @@ function MoneySheet({ session, calc, players, update, close }: MoneySheetProps) 
                   <div className="flex justify-center">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
+                      className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       checked={session.players.find(sp => sp.playerId === p.playerId)?.hasPaid || false}
+                      disabled={session.players.find(sp => sp.playerId === p.playerId)?.hasPaid || false}
                       onChange={(e) => {
                         const checked = e.target.checked;
-                        const newPlayers = session.players.map(sp =>
-                          sp.playerId === p.playerId ? { ...sp, hasPaid: checked } : sp
-                        );
-                        update({ ...session, players: newPlayers });
+                        if (checked) {
+                          if (window.confirm(`Xác nhận đã nhận tiền từ ${p.playerName}?`)) {
+                            updatePayment(session.id, p.playerId, true);
+                          }
+                        }
                       }}
                     />
                   </div>
@@ -293,7 +327,7 @@ function CostCard({ icon, label, value }: { icon: React.ReactNode; label: string
 function CourtTimeSection({ session }: { session: Session }) {
   const courts = session.courtNumbers?.length
     ? session.courtNumbers
-    : Array.from({ length: session.numberOfCourts }, (_, i) => i + 1);
+    : Array.from({ length: (session.courtNumbers?.length || 0) }, (_, i) => i + 1);
 
   if (!courts.length) return null;
 

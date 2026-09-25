@@ -1,10 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { usePlayers } from '../hooks/usePlayers';
 import type { Gender, SkillLevel, MemberType, Player } from '../models/types';
 import { Pencil, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react';
 import GenderAvatar from '../components/GenderAvatar';
-import { StorageService } from '../storage/storage';
-import { careerMatchCount } from '../utils/costCalc';
 
 const skillLabel = (s: SkillLevel | string) => {
   if (s === 'Y') return 'Yếu';
@@ -15,15 +13,13 @@ const skillLabel = (s: SkillLevel | string) => {
 };
 
 export default function PlayersPage() {
-  const { players, addPlayer, updatePlayer, removePlayer } = usePlayers();
+  const { players, loading, addPlayer, updatePlayer, removePlayer } = usePlayers();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [gender, setGender] = useState<Gender>('MALE');
   const [skill, setSkill] = useState<SkillLevel>('TBY');
   const [memberType, setMemberType] = useState<MemberType>('VÃNG LAI');
-
-  const sessions = useMemo(() => StorageService.getSessions(), [players]);
 
   const resetNewMemberDefaults = () => {
     setEditingId(null);
@@ -44,14 +40,24 @@ export default function PlayersPage() {
     setMemberType(p.memberType);
     setShowForm(true);
   };
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    editingId
-      ? updatePlayer(editingId, { name: name.trim(), gender, skillLevel: skill, memberType })
-      : addPlayer({ name: name.trim(), gender, skillLevel: skill, memberType, active: true });
-    closeForm();
+    try {
+      if (editingId) {
+        await updatePlayer(editingId, { name: name.trim(), gender, skillLevel: skill, memberType });
+      } else {
+        await addPlayer({ name: name.trim(), gender, skillLevel: skill, memberType, active: true });
+      }
+      closeForm();
+    } catch (err) {
+      alert('Đã xảy ra lỗi khi lưu thông tin.');
+    }
   };
+
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500">Đang tải danh sách...</div>;
+  }
 
   return (
     <div className="pb-20">
@@ -141,7 +147,6 @@ export default function PlayersPage() {
 
       <div className="space-y-2.5">
         {players.map(p => {
-          const matches = careerMatchCount(p.id, sessions);
           return (
             <div
               key={p.id}
@@ -157,7 +162,7 @@ export default function PlayersPage() {
                       <ShieldCheck size={12} />
                       {p.memberType === 'CỐ ĐỊNH' ? 'Cố định' : 'Vãng lai'}
                     </span>
-                    <span className="rounded-full bg-gray-100 text-gray-600 px-2 py-0.5">{matches}C</span>
+                    <span className="rounded-full bg-gray-100 text-gray-600 px-2 py-0.5">{(p as any).careerMatches || 0}C</span>
                   </div>
                 </div>
               </div>
@@ -166,11 +171,11 @@ export default function PlayersPage() {
                   <Pencil size={18} />
                 </button>
                 <button
-                  onClick={() =>
-                    window.confirm(
-                      `Bạn có chắc chắn muốn xoá thành viên "${p.name}"? Hành động này không thể hoàn tác.`,
-                    ) && removePlayer(p.id)
-                  }
+                  onClick={async () => {
+                    if (window.confirm(`Bạn có chắc chắn muốn xoá thành viên "${p.name}"? Hành động này không thể hoàn tác.`)) {
+                      try { await removePlayer(p.id); } catch (err) { alert('Lỗi khi xoá.'); }
+                    }
+                  }}
                   aria-label={`Xoá ${p.name}`}
                   className="text-red-400 p-2"
                 >

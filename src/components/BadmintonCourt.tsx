@@ -274,7 +274,7 @@ export default function BadmintonCourt({
 
       <div className="px-3 pb-2.5 pt-1" style={{ background: '#1b5e2a' }}>
         <button
-          onClick={onEndMatch}
+          onClick={() => { if (window.confirm('Bạn có chắc muốn kết thúc trận này?')) onEndMatch(); }}
           style={{
             display: 'block',
             width: '100%',

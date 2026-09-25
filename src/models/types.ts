@@ -1,4 +1,4 @@
-export type Gender = "MALE" | "FEMALE";
+﻿export type Gender = "MALE" | "FEMALE";
 
 export type SkillLevel = "Y" | "TBY" | "TB" | "K";
 
@@ -101,6 +101,7 @@ export interface CourtMeta {
 export interface Session {
   id: string;
   date: string;
+  sessionDate?: string;
   startTime?: string;
   endTime?: string;
   /** Legacy field retained for existing locally stored sessions. */

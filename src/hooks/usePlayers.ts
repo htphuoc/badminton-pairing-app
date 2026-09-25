@@ -1,45 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Player } from '../models/types';
-import { StorageService } from '../storage/storage';
-import { v4 as uuidv4 } from 'uuid';
+import { ApiClient } from '../lib/api';
 
 export function usePlayers() {
   const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setPlayers(StorageService.getPlayers());
+  const fetchPlayers = useCallback(async () => {
+    try {
+      const data = await ApiClient.get<Player[]>('/members');
+      setPlayers(data);
+    } catch (err) {
+      console.error('Failed to fetch players', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const save = (newPlayers: Player[]) => {
-    setPlayers(newPlayers);
-    StorageService.savePlayers(newPlayers);
+  useEffect(() => {
+    fetchPlayers();
+  }, [fetchPlayers]);
+
+  const addPlayer = async (player: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const newPlayer = await ApiClient.post<Player>('/members', player);
+      setPlayers(prev => [...prev, newPlayer]);
+    } catch (err) {
+      console.error('Failed to add player', err);
+      throw err;
+    }
   };
 
-  const addPlayer = (player: Omit<Player, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newPlayer: Player = {
-      ...player,
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    save([...players, newPlayer]);
+  const updatePlayer = async (id: string, updates: Partial<Player>) => {
+    try {
+      await ApiClient.put(`/members/${id}`, updates);
+      setPlayers(prev => prev.map(p => 
+        p.id === id ? { ...p, ...updates } : p
+      ));
+    } catch (err) {
+      console.error('Failed to update player', err);
+      throw err;
+    }
   };
 
-  const updatePlayer = (id: string, updates: Partial<Player>) => {
-    const updated = players.map(p => 
-      p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
-    );
-    save(updated);
-  };
-
-  const removePlayer = (id: string) => {
-    save(players.filter(p => p.id !== id));
+  const removePlayer = async (id: string) => {
+    try {
+      await ApiClient.delete(`/members/${id}`);
+      setPlayers(prev => prev.filter(p => p.id !== id));
+    } catch (err) {
+      console.error('Failed to remove player', err);
+      throw err;
+    }
   };
 
   return {
     players,
+    loading,
     addPlayer,
     updatePlayer,
-    removePlayer
+    removePlayer,
+    refreshPlayers: fetchPlayers
   };
 }

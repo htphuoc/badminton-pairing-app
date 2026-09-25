@@ -1,0 +1,1209 @@
+# CẦU LÔNG 360° — REBUILD DATA ARCHITECTURE
+# Roles: ADMIN / HOST / MEMBER
+
+We need to upgrade the existing badminton application into a proper database-backed, multi-user, multi-tenant application.
+
+IMPORTANT:
+
+The existing application is a prototype.
+
+DO NOT preserve the existing database structure or existing stored data.
+
+Existing data does NOT need to be migrated.
+
+You are allowed to:
+
+- Redesign the database
+- Drop/recreate tables
+- Change entity relationships
+- Rename fields
+- Remove obsolete entities
+- Refactor APIs
+- Refactor authentication
+- Replace localStorage-based persistence
+- Change backend architecture where necessary
+- Change frontend data access
+- Change existing internal models
+
+You only need to preserve the useful existing application functionality and user experience.
+
+DO NOT waste effort building migration logic for existing data.
+
+==================================================
+1. CORE OBJECTIVE
+==================================================
+
+Transform the current application into:
+
+A secure multi-user
++
+database-backed
++
+multi-tenant
++
+role-based
++
+HOST-isolated
+
+badminton management application.
+
+The system must have EXACTLY 3 roles:
+
+1. ADMIN
+2. HOST
+3. MEMBER
+
+Do NOT create additional roles.
+
+No:
+
+- SUPER_ADMIN
+- FULL_ACCESS
+- USER_MANAGER
+- MANAGER
+- STAFF
+- MODERATOR
+
+Keep the authorization model simple.
+
+The key authorization concept is:
+
+ROLE + DATA OWNERSHIP
+
+==================================================
+2. BUSINESS MODEL
+==================================================
+
+The business model is:
+
+ADMIN
+    |
+    +-------------------------------+
+    |               |               |
+   HOST A          HOST B          HOST C
+    |               |               |
+  Group A         Group B         Group C
+    |               |               |
+ Members A       Members B       Members C
+    |               |               |
+ Matches A       Matches B       Matches C
+ Statistics A   Statistics B   Statistics C
+ Settings A     Settings B     Settings C
+
+Each HOST operates an independent badminton group/workspace.
+
+HOSTs must be completely isolated from each other.
+
+==================================================
+3. ADMIN
+==================================================
+
+ADMIN is the system administrator.
+
+ADMIN has access to the entire system.
+
+ADMIN can:
+
+- Create HOST accounts
+- Edit HOST accounts
+- Activate/deactivate HOST accounts
+- Reset HOST passwords
+- View all HOSTs
+- View all groups
+- View all members
+- View all schedules
+- View all matches
+- View all match history
+- View all statistics
+- View all group settings
+- Manage system settings
+- Manage any group
+- Manage any member
+
+ADMIN is not restricted by tenant/data ownership.
+
+ADMIN data scope:
+
+ALL DATA
+
+==================================================
+4. HOST
+==================================================
+
+HOST is the organizer of a badminton group.
+
+A HOST manages:
+
+- Their badminton group
+- Their fixed rented court(s)
+- Their members
+- Their badminton schedule
+- Their sessions
+- Their pairings
+- Their matches
+- Their match history
+- Their statistics
+- Their group settings
+
+A HOST must ONLY access data belonging to their own group.
+
+Example:
+
+HOST A
+
+CAN:
+- Group A
+- Members A
+- Schedule A
+- Matches A
+- History A
+- Statistics A
+- Settings A
+
+CANNOT:
+- Group B
+- Members B
+- Schedule B
+- Matches B
+- History B
+- Statistics B
+- Settings B
+
+The same applies to every HOST.
+
+==================================================
+5. MEMBER
+==================================================
+
+MEMBER represents a badminton player/member belonging to a HOST group.
+
+A MEMBER belongs to a specific group.
+
+Initially, MEMBER access should be intentionally limited.
+
+Potential MEMBER capabilities:
+
+- Login
+- View own profile
+- View own group
+- View own schedule
+- View own matches
+- View own match history
+- View limited personal statistics
+
+MEMBER must NOT:
+
+- Manage HOSTs
+- Manage other users
+- Manage group settings
+- Manage members
+- Access another HOST's group
+- Access another HOST's private data
+- Change their role
+- Elevate privileges
+
+Build the architecture so more MEMBER functionality can be added later.
+
+Do not overbuild the MEMBER portal in this phase.
+
+==================================================
+6. USER ACCOUNT VS BADMINTON MEMBER
+==================================================
+
+Separate:
+
+USER ACCOUNT
+
+from:
+
+BADMINTON MEMBER
+
+A badminton member does not necessarily need a login account.
+
+Example:
+
+Member:
+- Name
+- Gender
+- Skill Level
+- Member Type
+- Phone
+- Note
+- Avatar
+
+This member may exist only as a badminton participant.
+
+Later, the member can be linked to a login account:
+
+UserAccount
+      |
+      ↓
+Member
+      |
+      ↓
+Group
+      |
+      ↓
+HOST
+
+This allows existing HOSTs to manage members without requiring every member to have an account.
+
+==================================================
+7. MULTI-TENANT / DATA ISOLATION
+==================================================
+
+Treat every HOST group as an isolated tenant/workspace.
+
+Concept:
+
+TENANT = HOST GROUP
+
+Example:
+
+HOST A → Group A
+HOST B → Group B
+HOST C → Group C
+
+HOST A must never receive HOST B's data from the backend.
+
+This is a security requirement.
+
+NOT merely a UI requirement.
+
+==================================================
+8. BACKEND AUTHORIZATION
+==================================================
+
+Authorization MUST be enforced on the server/backend.
+
+Never rely only on:
+
+- React route guards
+- hidden menus
+- hidden buttons
+- localStorage
+- frontend filtering
+- client-side role checks
+
+Every protected API must determine:
+
+1. Authenticated user
+2. Role
+3. Group ownership
+4. Resource ownership
+5. Permission
+
+Example:
+
+HOST A requests:
+
+GET /api/groups/{GROUP_B_ID}/members
+
+Backend checks:
+
+CurrentUser = HOST A
+
+Group B owner = HOST B
+
+Therefore:
+
+DENY
+
+Return:
+
+403 Forbidden
+
+Do not return the data.
+
+==================================================
+9. IDOR PROTECTION
+==================================================
+
+Protect all APIs from insecure direct object references.
+
+The following must NOT be sufficient to access a resource:
+
+- memberId
+- groupId
+- matchId
+- scheduleId
+- statisticsId
+- settingsId
+
+The backend must always verify that the requested resource is within the authenticated user's scope.
+
+Examples:
+
+HOST A cannot:
+
+GET /api/members/member-of-host-b
+
+HOST A cannot:
+
+GET /api/matches/match-of-host-b
+
+HOST A cannot:
+
+GET /api/statistics/group-b
+
+HOST A cannot:
+
+PUT /api/groups/group-b/settings
+
+All must be rejected.
+
+==================================================
+10. DATA OWNERSHIP
+==================================================
+
+Use explicit ownership relationships.
+
+Recommended:
+
+User
+  |
+  +-- ADMIN
+  |
+  +-- HOST
+       |
+       +-- Group
+            |
+            +-- Member
+            +-- Court
+            +-- Schedule
+            +-- Match
+            +-- MatchPlayer
+            +-- MatchHistory
+            +-- Statistics
+            +-- GroupSettings
+
+MEMBER:
+
+User
+  |
+  +-- MEMBER
+       |
+       +-- Member
+            |
+            +-- Group
+
+Do not unnecessarily store HOST_ID in every table if ownership can safely be derived through Group.
+
+However, denormalization is acceptable if there is a clear performance/security reason.
+
+Prioritize:
+
+- correctness
+- maintainability
+- security
+- simple queries
+
+==================================================
+11. RECOMMENDED DATABASE MODEL
+==================================================
+
+You may completely redesign the database.
+
+A clean conceptual schema could be:
+
+Users
+-----
+Id
+Username
+PasswordHash
+DisplayName
+Email
+Phone
+Role
+IsActive
+CreatedAt
+UpdatedAt
+
+Groups
+------
+Id
+Name
+HostUserId
+Description
+IsActive
+CreatedAt
+UpdatedAt
+
+Members
+-------
+Id
+GroupId
+Name
+Gender
+SkillLevel
+MemberType
+Phone
+Note
+Avatar
+IsActive
+CreatedAt
+UpdatedAt
+
+Courts
+------
+Id
+GroupId
+Name
+Address
+Description
+IsActive
+
+Schedules
+---------
+Id
+GroupId
+CourtId
+Date
+StartTime
+EndTime
+Status
+Notes
+
+Matches
+-------
+Id
+GroupId
+ScheduleId
+MatchType
+Status
+CreatedAt
+
+MatchPlayers
+------------
+Id
+MatchId
+MemberId
+Team
+Position
+
+MatchHistory
+------------
+Id
+GroupId
+MatchId
+CreatedAt
+Result
+Notes
+
+GroupSettings
+-------------
+Id
+GroupId
+SettingKey
+SettingValue
+
+This is only a starting point.
+
+Inspect the existing application first.
+
+Use better names/structure if appropriate.
+
+Do NOT blindly implement this schema.
+
+==================================================
+12. HOST OWNERSHIP
+==================================================
+
+Initially:
+
+One HOST → One primary GROUP
+
+But design the database so that:
+
+One HOST → Multiple GROUPS
+
+can be supported in the future.
+
+Do not make the architecture impossible to extend.
+
+For now the UI can assume one primary group per HOST if that matches the product requirement.
+
+==================================================
+13. MEMBER OWNERSHIP
+==================================================
+
+Every MEMBER belongs to a GROUP.
+
+Example:
+
+Group A
+  ├── Member A1
+  ├── Member A2
+  └── Member A3
+
+Group B
+  ├── Member B1
+  ├── Member B2
+  └── Member B3
+
+HOST A can manage:
+
+A1
+A2
+A3
+
+HOST A cannot manage:
+
+B1
+B2
+B3
+
+Only ADMIN can move members between HOST groups.
+
+==================================================
+14. ROLE PERMISSION MATRIX
+==================================================
+
+ADMIN:
+
+Users:
+    Full
+
+HOST:
+
+Users:
+    Own account only
+
+MEMBER:
+
+Users:
+    Own account only
+
+Groups:
+
+ADMIN:
+    All
+
+HOST:
+    Own group
+
+MEMBER:
+    Own group / allowed read-only data
+
+Members:
+
+ADMIN:
+    All
+
+HOST:
+    Own group
+
+MEMBER:
+    Own profile only
+
+Matches:
+
+ADMIN:
+    All
+
+HOST:
+    Own group
+
+MEMBER:
+    Own matches / allowed read-only data
+
+Statistics:
+
+ADMIN:
+    All
+
+HOST:
+    Own group
+
+MEMBER:
+    Limited personal statistics
+
+Settings:
+
+ADMIN:
+    All
+
+HOST:
+    Own group settings
+
+MEMBER:
+    No modification
+
+==================================================
+15. SYSTEM SETTINGS VS GROUP SETTINGS
+==================================================
+
+Separate:
+
+SYSTEM SETTINGS
+
+from:
+
+GROUP SETTINGS
+
+SYSTEM SETTINGS:
+
+ADMIN only.
+
+GROUP SETTINGS:
+
+ADMIN:
+    All groups
+
+HOST:
+    Own group only
+
+MEMBER:
+    Read-only where explicitly required
+
+Do not mix system configuration with HOST-specific configuration.
+
+==================================================
+16. HOST DASHBOARD
+==================================================
+
+HOST dashboard should represent:
+
+"My Badminton Group"
+
+It should show only:
+
+- My members
+- My upcoming sessions
+- My courts
+- My matches
+- My statistics
+- My recent activity
+
+Do NOT show:
+
+- Other HOSTs
+- Other HOST member counts
+- Other HOST statistics
+- Other HOST schedules
+
+==================================================
+17. ADMIN DASHBOARD
+==================================================
+
+ADMIN dashboard can provide global visibility:
+
+- Total HOSTs
+- Total groups
+- Total members
+- Total matches
+- Global statistics
+- HOST management
+- Group management
+- System settings
+
+ADMIN may drill down into any HOST/group.
+
+==================================================
+18. MEMBER EXPERIENCE
+==================================================
+
+Keep MEMBER functionality simple initially.
+
+Possible navigation:
+
+- My Profile
+- My Schedule
+- My Matches
+- My History
+- My Statistics
+
+The architecture should allow additional features later.
+
+==================================================
+19. AUTHENTICATION
+==================================================
+
+Implement secure authentication.
+
+ADMIN and HOST accounts require secure credentials.
+
+MEMBER accounts can be created when needed.
+
+Passwords:
+
+- Never store plaintext.
+- Use Argon2id or bcrypt.
+- Never store passwords in localStorage.
+- Never expose password hashes to frontend APIs.
+
+Inactive accounts cannot log in.
+
+Authentication must be server-side.
+
+==================================================
+20. INITIAL ADMIN
+==================================================
+
+Create an initial ADMIN account.
+
+Do not hard-code a production password into the frontend.
+
+Use secure environment/configuration for initialization.
+
+There should be one initial ADMIN.
+
+ADMIN can subsequently manage HOST accounts.
+
+==================================================
+21. HOST CREATION
+==================================================
+
+Only ADMIN can create a HOST.
+
+Creating a HOST should establish:
+
+User
+  ↓
+HOST
+  ↓
+Group
+
+The HOST should immediately receive access only to their own group.
+
+==================================================
+22. MEMBER CREATION
+==================================================
+
+HOST can create members inside their own group.
+
+Example:
+
+HOST A:
+
+Create:
+Nguyễn Văn A
+
+The new member automatically belongs to:
+
+HOST A → Group A
+
+The HOST must NOT be able to specify an arbitrary groupId to create a member in another HOST's group.
+
+Backend determines ownership.
+
+==================================================
+23. API DESIGN
+==================================================
+
+Design APIs around authenticated scope.
+
+Examples:
+
+Authentication:
+
+POST /api/auth/login
+POST /api/auth/logout
+GET  /api/auth/me
+
+ADMIN:
+
+GET    /api/admin/hosts
+POST   /api/admin/hosts
+PUT    /api/admin/hosts/{id}
+PATCH  /api/admin/hosts/{id}/status
+POST   /api/admin/hosts/{id}/reset-password
+
+Groups:
+
+GET /api/groups
+GET /api/groups/{id}
+
+Members:
+
+GET    /api/members
+POST   /api/members
+GET    /api/members/{id}
+PUT    /api/members/{id}
+DELETE /api/members/{id}
+
+Matches:
+
+GET  /api/matches
+POST /api/matches
+GET  /api/matches/{id}
+
+Statistics:
+
+GET /api/statistics
+
+Settings:
+
+GET /api/settings
+PUT /api/settings
+
+The exact API structure can be changed after inspecting the existing application.
+
+The important requirement is:
+
+THE BACKEND AUTOMATICALLY APPLIES THE CURRENT USER'S DATA SCOPE.
+
+==================================================
+24. FRONTEND AUTHORIZATION
+==================================================
+
+Frontend should render navigation based on:
+
+ADMIN
+HOST
+MEMBER
+
+ADMIN:
+
+- Dashboard
+- HOST Management
+- Groups
+- Members
+- Calendar
+- Matches
+- History
+- Statistics
+- Settings
+
+HOST:
+
+- Dashboard
+- My Members
+- Calendar
+- Pairing
+- Matches
+- History
+- Statistics
+- Group Settings
+
+MEMBER:
+
+- My Profile
+- My Schedule
+- My Matches
+- My History
+- My Statistics
+
+Do not show irrelevant administrative navigation.
+
+However:
+
+Frontend authorization is only for UX.
+
+Backend authorization is mandatory.
+
+==================================================
+25. EXISTING UI / UX
+==================================================
+
+Preserve the current application's visual identity and existing badminton workflows wherever practical.
+
+Do NOT redesign the application unnecessarily.
+
+Preserve:
+
+- Existing navigation style
+- Existing badminton terminology
+- Existing pairing workflow
+- Existing member management workflow
+- Existing calendar workflow
+- Existing statistics concepts
+- Responsive behavior
+
+But because existing data does not need to be preserved:
+
+You may freely refactor:
+
+- database
+- API contracts
+- data models
+- state management
+- localStorage
+- backend structure
+
+if doing so produces a cleaner architecture.
+
+==================================================
+26. LOCALSTORAGE
+==================================================
+
+The existing application may currently use localStorage.
+
+Replace shared application data stored in localStorage with database-backed APIs.
+
+Do NOT build complicated migration logic.
+
+Existing localStorage data can be discarded.
+
+The target architecture should be:
+
+React Frontend
+      ↓
+Backend API
+      ↓
+Authentication / Authorization
+      ↓
+Database
+
+NOT:
+
+React
+  ↓
+localStorage
+
+for shared application data.
+
+LocalStorage may still be used for harmless client-only preferences such as:
+
+- theme
+- UI preferences
+- temporary state
+
+but NOT authoritative business data.
+
+==================================================
+27. DATABASE RESET IS ALLOWED
+==================================================
+
+Because existing data does NOT need to be preserved:
+
+You may:
+
+- Drop existing tables
+- Recreate schema
+- Reset development database
+- Replace seed data
+- Replace existing models
+- Rewrite relationships
+
+Do NOT spend time protecting obsolete prototype data.
+
+Focus on building a clean production-ready target architecture.
+
+==================================================
+28. TESTING
+==================================================
+
+Create tests for:
+
+Authentication:
+
+- Valid login
+- Invalid login
+- Inactive account
+- Logout
+
+ADMIN:
+
+- Can manage HOST
+- Can access all groups
+- Can access all members
+
+HOST:
+
+- Can access own group
+- Can create own members
+- Can update own members
+- Can create matches
+- Can view own statistics
+
+HOST isolation:
+
+- HOST A cannot read HOST B
+- HOST A cannot update HOST B
+- HOST A cannot delete HOST B
+- HOST A cannot read HOST B statistics
+- HOST A cannot read HOST B settings
+- HOST A cannot access HOST B by changing IDs
+
+MEMBER:
+
+- Can access own allowed data
+- Cannot access administration
+- Cannot access another HOST
+- Cannot access another member's private data
+- Cannot change role
+
+IDOR:
+
+Explicitly test direct API requests using IDs belonging to another HOST.
+
+==================================================
+29. SECURITY REQUIREMENTS
+==================================================
+
+Mandatory:
+
+- Server-side authorization
+- Secure password hashing
+- Authentication middleware
+- Role authorization
+- Resource ownership checks
+- IDOR protection
+- Input validation
+- Proper 401/403 handling
+- No password exposure
+- No sensitive data exposure
+- No authorization decisions based only on frontend
+
+==================================================
+30. NO DATA MIGRATION REQUIREMENT
+==================================================
+
+IMPORTANT:
+
+DO NOT implement data migration from the current prototype.
+
+Existing data can be discarded.
+
+You may start with a clean database.
+
+Seed only the minimum required data:
+
+- 1 ADMIN
+- Optional development HOST
+- Optional development MEMBER
+
+The database should represent the new architecture cleanly.
+
+==================================================
+31. IMPLEMENTATION APPROACH
+==================================================
+
+PHASE 1 — AUDIT CURRENT CODE
+
+Inspect:
+
+- package.json
+- frontend architecture
+- backend architecture
+- API layer
+- authentication
+- localStorage
+- current data models
+- current pairing logic
+- current member logic
+- current statistics
+- current settings
+
+Do not assume the current architecture is correct.
+
+==================================================
+
+PHASE 2 — DESIGN TARGET ARCHITECTURE
+
+Before coding, provide:
+
+1. Target architecture diagram
+2. Database ERD
+3. Role/permission matrix
+4. HOST data-isolation model
+5. API design
+6. Authentication design
+7. Frontend navigation by role
+8. File-by-file implementation plan
+
+==================================================
+
+PHASE 3 — IMPLEMENT DATABASE
+
+Create a clean database schema.
+
+Existing data does NOT need to be migrated.
+
+Prefer a simple relational design.
+
+==================================================
+
+PHASE 4 — IMPLEMENT AUTHENTICATION
+
+Implement:
+
+ADMIN
+HOST
+MEMBER
+
+authentication and secure password storage.
+
+==================================================
+
+PHASE 5 — IMPLEMENT AUTHORIZATION
+
+Implement:
+
+Role
++
+Resource ownership
++
+Data scope
+
+at the backend.
+
+==================================================
+
+PHASE 6 — IMPLEMENT APIs
+
+Replace prototype/localStorage business-data access with database APIs.
+
+==================================================
+
+PHASE 7 — UPDATE FRONTEND
+
+Connect existing UI to the new APIs.
+
+Keep the existing UX wherever possible.
+
+==================================================
+
+PHASE 8 — TEST
+
+Run:
+
+- Unit tests
+- API tests
+- Authorization tests
+- Cross-HOST isolation tests
+- Frontend tests
+- Existing badminton workflow tests
+
+==================================================
+
+PHASE 9 — CLEANUP
+
+Remove obsolete:
+
+- localStorage business data
+- prototype authorization
+- duplicate models
+- unused APIs
+- obsolete database code
+
+Do not leave two competing data architectures.
+
+==================================================
+32. IMPORTANT: DO NOT OVERENGINEER
+==================================================
+
+Build a clean, simple architecture.
+
+Do NOT introduce:
+
+- Microservices
+- Kubernetes
+- Redis
+- Event bus
+- CQRS
+- complicated permission engines
+- unnecessary infrastructure
+
+unless the existing application genuinely requires them.
+
+A simple architecture is preferred:
+
+Frontend
+    ↓
+Backend API
+    ↓
+Authentication + Authorization
+    ↓
+PostgreSQL

@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Check, Clock3, Play, Plus, Shuffle, Trash2, UserPlus, X } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { usePlayers } from '../hooks/usePlayers';
 import BadmintonCourt from '../components/BadmintonCourt';
 import GenderAvatar from '../components/GenderAvatar';
-import { getDefaultCourtsForWeekday, StorageService } from '../storage/storage';
-import { careerMatchCount } from '../utils/costCalc';
 import { reshuffleSuggestion, type MatchSuggestion } from '../algorithms/matchingEngine';
 import type { Gender, MemberType, SkillLevel } from '../models/types';
+import { useSettings } from '../hooks/useSettings';
 
 const label = (m: number) =>
   `${Math.floor(m / 60)}h ${m % 60 > 0 ? (m % 60) + 'm' : ''}`.trim() || '0m';
@@ -53,10 +52,19 @@ export default function SessionPage() {
     returnCourt,
   } = useSession();
   const { players } = usePlayers();
+  const { settings, loading: settingsLoading } = useSettings();
 
-  const [courts, setCourts] = useState(() => getDefaultCourtsForWeekday(new Date().getDay()));
+  const getDefaultCourts = () => settings.defaultCourtsByWeekday?.[String(new Date().getDay()) as keyof typeof settings.defaultCourtsByWeekday] ?? [];
+
+  const [courts, setCourts] = useState<number[]>([]);
   const [mins, setMins] = useState(120);
   const [ids, setIds] = useState<string[]>([]);
+  
+  useEffect(() => {
+    if (!settingsLoading && !currentSession && courts.length === 0) {
+      setCourts(getDefaultCourts());
+    }
+  }, [settingsLoading, currentSession, settings.defaultCourtsByWeekday]);
   const [modal, setModal] = useState<{ court: string } | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
@@ -72,16 +80,16 @@ export default function SessionPage() {
     excluded: string[][];
   } | null>(null);
 
-  const openAutoPreview = (courtId?: string) => {
-    const result = previewAutoMatch(courtId);
+  const openAutoPreview = async (courtId?: string) => {
+    const result = await previewAutoMatch(courtId);
     if (!result) return;
     setAutoPreview({ courtId: result.courtId, suggestion: result.suggestion, excluded: [] });
   };
 
-  const reshuffleAutoPreview = () => {
+  const reshuffleAutoPreview = async () => {
     if (!autoPreview) return;
     const excluded = [...autoPreview.excluded, autoPreview.suggestion.players];
-    const next = previewAutoMatch(autoPreview.courtId, excluded);
+    const next = await previewAutoMatch(autoPreview.courtId, excluded);
     if (next) {
       setAutoPreview({ courtId: next.courtId, suggestion: next.suggestion, excluded });
       return;
@@ -94,18 +102,13 @@ export default function SessionPage() {
     });
   };
 
-  const allSessions = useMemo(() => StorageService.getSessions(), [currentSession, players]);
-
   useEffect(() => {
     if (players.length && !ids.length) {
       setIds(players.filter(p => p.memberType === 'CỐ ĐỊNH').map(p => p.id));
     }
   }, [players]);
 
-  useEffect(() => {
-    if (currentSession) return;
-    setCourts(getDefaultCourtsForWeekday(new Date().getDay()));
-  }, [currentSession]);
+  // handled courts above
 
   const toggle = (id: string) =>
     setIds(x => (x.includes(id) ? x.filter(i => i !== id) : [...x, id]));
@@ -128,7 +131,7 @@ export default function SessionPage() {
 
   /* ── CHUẨN BỊ VÀO SÂN ── */
   if (!currentSession) {
-    const defaultCourts = getDefaultCourtsForWeekday(new Date().getDay());
+    const defaultCourts = getDefaultCourts();
     return (
       <div className="pb-24 space-y-4">
         <h2 className="text-4xl font-black uppercase text-center text-slate-800 tracking-tight">CHUẨN BỊ VÀO SÂN</h2>
@@ -211,7 +214,7 @@ export default function SessionPage() {
               .sort((a, b) => (a.memberType === 'CỐ ĐỊNH' ? -1 : 1) - (b.memberType === 'CỐ ĐỊNH' ? -1 : 1))
               .map(p => {
               const selected = ids.includes(p.id);
-              const matches = careerMatchCount(p.id, allSessions);
+              const matches = (p as any).careerMatches || 0;
               return (
                 <button
                   key={p.id}
@@ -336,9 +339,13 @@ export default function SessionPage() {
                   Hủy
                 </button>
                 <button
-                  onClick={() => {
-                    createSession(courts, mins, ids, pendingSessionType);
-                    setPendingSessionType(null);
+                  onClick={async () => {
+                    try {
+                      await createSession(courts, mins, ids, pendingSessionType);
+                      setPendingSessionType(null);
+                    } catch (e: any) {
+                      alert('Lỗi tạo buổi chơi: ' + e.message);
+                    }
                   }}
                   className={`rounded-xl py-3 font-extrabold text-sm text-white
                     ${pendingSessionType === 'VÃNG LAI' ? 'bg-emerald-600' : 'bg-primary'}`}
@@ -382,7 +389,7 @@ export default function SessionPage() {
           </small>
           <div className="flex items-baseline gap-2 flex-wrap">
             <b className="block text-lg">
-              {new Date(currentSession.date).toLocaleDateString('vi-VN')}
+              {new Date(currentSession.sessionDate || currentSession.date).toLocaleDateString('vi-VN')}
             </b>
             <small className="text-teal-100 font-semibold">
               {configured.length} sân · {label(currentSession.plannedDurationMinutes || 120)}
@@ -423,7 +430,7 @@ export default function SessionPage() {
         </button>
       </div>
 
-      {configured.map(c => {
+      {configured.filter(c => !currentSession.courtMeta?.[String(c)]?.returnedAt).map(c => {
         const activeMatch = playing.find(x => x.courtId === String(c));
         const rate =
           currentSession.courtFees?.[c] ||
@@ -575,7 +582,7 @@ export default function SessionPage() {
                   .sort((a, b) => (a.memberType === 'CỐ ĐỊNH' ? -1 : 1) - (b.memberType === 'CỐ ĐỊNH' ? -1 : 1))
                   .map(p => {
                   const selected = memberPick.includes(p.id);
-                  const matches = careerMatchCount(p.id, allSessions);
+                  const matches = (p as any).careerMatches || 0;
                   return (
                     <button
                       key={p.id}
