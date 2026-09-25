@@ -2,7 +2,6 @@
   "name": "badminton-app",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "dev": "concurrently \"tsx server/index.ts\" \"vite\"",
     "build": "tsc -b && vite build",
