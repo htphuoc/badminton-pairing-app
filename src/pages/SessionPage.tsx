@@ -1,4 +1,5 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Clock3, Play, Plus, Shuffle, Trash2, UserPlus, X } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { usePlayers } from '../hooks/usePlayers';
@@ -73,6 +74,21 @@ export default function SessionPage() {
   const [newCourt, setNewCourt] = useState(4);
   const [addMins, setAddMins] = useState(60);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [endingSession, setEndingSession] = useState(false);
+
+  const handleConfirmEnd = useCallback(async () => {
+    if (endingSession) return;
+    setEndingSession(true);
+    try {
+      await endSession();
+      setConfirmEnd(false);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Không thể kết thúc buổi chơi';
+      alert(message);
+    } finally {
+      setEndingSession(false);
+    }
+  }, [endSession, endingSession]);
   const [pendingSessionType, setPendingSessionType] = useState<'CỐ ĐỊNH' | 'VÃNG LAI' | null>(null);
   const [autoPreview, setAutoPreview] = useState<{
     courtId: string;
@@ -855,32 +871,42 @@ export default function SessionPage() {
         </div>
       )}
 
-      {confirmEnd && (
-        <div className="fixed inset-0 bg-black/50 z-50 grid place-items-center p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
-            <h3 className="font-extrabold uppercase">Kết thúc buổi</h3>
+      {confirmEnd && createPortal(
+        <div
+          className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="end-session-title"
+        >
+          <div
+            className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-xl relative z-[101]"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 id="end-session-title" className="font-extrabold uppercase">Kết thúc buổi</h3>
             <p className="text-sm text-gray-600">
               Bạn có chắc chắn muốn kết thúc buổi chơi này không?
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button
+                type="button"
+                disabled={endingSession}
                 onClick={() => setConfirmEnd(false)}
-                className="border border-gray-300 rounded-xl py-3 font-bold"
+                className="border border-gray-300 rounded-xl py-3 font-bold disabled:opacity-50"
               >
                 Hủy
               </button>
               <button
-                onClick={() => {
-                  setConfirmEnd(false);
-                  endSession();
-                }}
-                className="bg-primary text-white rounded-xl py-3 font-bold"
+                type="button"
+                disabled={endingSession}
+                onClick={handleConfirmEnd}
+                className="bg-primary text-white rounded-xl py-3 font-bold disabled:opacity-60"
               >
-                Xác nhận
+                {endingSession ? 'Đang xử lý...' : 'Xác nhận'}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

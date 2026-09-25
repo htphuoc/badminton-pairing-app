@@ -261,10 +261,14 @@ router.post('/:id/end', async (req: Request, res: Response): Promise<void> => {
 
   const endTime = now();
 
-  // End all active matches
   const activeMatches = await db.select().from(matches)
-    .where(and(eq(matches.sessionId, session.id), eq(matches.status, 'PLAYING')))
-    ;
+    .where(and(eq(matches.sessionId, session.id), eq(matches.status, 'PLAYING')));
+
+  const sessionPlayerRows = await db.select().from(sessionPlayers)
+    .where(eq(sessionPlayers.sessionId, session.id));
+  const playerByMemberId = new Map(sessionPlayerRows.map(sp => [sp.memberId, sp]));
+
+  const playerDeltas = new Map<string, { matches: number; minutes: number }>();
 
   for (const match of activeMatches) {
     const startMs = match.startTime ? new Date(match.startTime).getTime() : Date.now();
@@ -278,21 +282,38 @@ router.post('/:id/end', async (req: Request, res: Response): Promise<void> => {
       updatedAt: endTime,
     }).where(eq(matches.id, match.id));
 
-    // Update session player stats
     for (const memberId of matchPlayers) {
-      const sp = (await db.select().from(sessionPlayers)
-        .where(and(eq(sessionPlayers.sessionId, session.id), eq(sessionPlayers.memberId, memberId)))
-        )[0];
-      if (sp) {
-        await db.update(sessionPlayers).set({
-          matchesPlayed: sp.matchesPlayed + 1,
-          totalMinutesPlayed: sp.totalMinutesPlayed + diffMins,
-          attendance: 'WAITING',
-          waitingSince: endTime,
-        }).where(eq(sessionPlayers.id, sp.id));
-      }
+      const prev = playerDeltas.get(memberId) ?? { matches: 0, minutes: 0 };
+      playerDeltas.set(memberId, {
+        matches: prev.matches + 1,
+        minutes: prev.minutes + diffMins,
+      });
     }
   }
+
+  await Promise.all(
+    [...playerDeltas.entries()].map(([memberId, delta]) => {
+      const sp = playerByMemberId.get(memberId);
+      if (!sp) return Promise.resolve();
+      return db.update(sessionPlayers).set({
+        matchesPlayed: sp.matchesPlayed + delta.matches,
+        totalMinutesPlayed: sp.totalMinutesPlayed + delta.minutes,
+        attendance: 'WAITING',
+        waitingSince: endTime,
+      }).where(eq(sessionPlayers.id, sp.id));
+    }),
+  );
+
+  await Promise.all(
+    sessionPlayerRows
+      .filter(sp => sp.attendance === 'PLAYING')
+      .map(sp =>
+        db.update(sessionPlayers).set({
+          attendance: 'WAITING',
+          waitingSince: endTime,
+        }).where(eq(sessionPlayers.id, sp.id)),
+      ),
+  );
 
   // Use the session object directly (from assertSessionAccess which works fine)
   const finalShuttleCount = req.body?.shuttleCount ?? session.shuttleCount ?? 15;

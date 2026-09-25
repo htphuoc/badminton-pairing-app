@@ -61,15 +61,14 @@ export function useSession() {
     }
   };
 
-  const endSession = async () => {
-    if (!currentSession) return;
-    try {
-      await ApiClient.post(`/sessions/${currentSession.id}/end`);
-      setCurrentSession(null);
-    } catch (err) {
-      console.error('Failed to end session', err);
+  const endSession = useCallback(async () => {
+    const sessionId = currentSession?.id;
+    if (!sessionId) {
+      throw new Error('Không tìm thấy buổi chơi đang chạy');
     }
-  };
+    await ApiClient.post(`/sessions/${sessionId}/end`);
+    setCurrentSession(null);
+  }, [currentSession?.id]);
 
   const addPlayersToSession = async (playerIds: string[]) => {
     if (!currentSession || !playerIds.length) return;
