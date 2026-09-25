@@ -44,23 +44,38 @@ export default function HistoryPage() {
   }, []);
 
   const saveSessionSettings = async (s: Session) => {
+    setSessions(prev => prev.map(x => x.id === s.id ? { ...x, shuttleCount: s.shuttleCount, isFinalized: s.isFinalized } : x));
+    if (selected?.id === s.id) setSelected({ ...selected, shuttleCount: s.shuttleCount, isFinalized: s.isFinalized });
     try {
       await ApiClient.put(`/sessions/${s.id}`, {
         shuttleCount: s.shuttleCount,
         isFinalized: s.isFinalized,
       });
-      fetchData();
     } catch (err) {
       console.error('Failed to update session settings', err);
+      fetchData();
     }
   };
 
   const updatePlayerPayment = async (sessionId: string, playerId: string, hasPaid: boolean) => {
+    setSessions(prev => prev.map(s => {
+      if (s.id !== sessionId) return s;
+      return {
+        ...s,
+        players: s.players?.map(p => p.playerId === playerId ? { ...p, hasPaid } : p)
+      };
+    }));
+    if (selected?.id === sessionId) {
+      setSelected(prev => prev ? {
+        ...prev,
+        players: prev.players?.map(p => p.playerId === playerId ? { ...p, hasPaid } : p)
+      } : prev);
+    }
     try {
       await ApiClient.put(`/sessions/${sessionId}/players/${playerId}`, { hasPaid });
-      fetchData();
     } catch (err) {
       console.error('Failed to update player payment', err);
+      fetchData();
     }
   };
 
@@ -129,7 +144,10 @@ interface MoneySheetProps {
 }
 
 function MoneySheet({ session, calc, players, updateSettings, updatePayment, close }: MoneySheetProps) {
-  const setShuttle = (value: number) => updateSettings({ ...session, shuttleCount: value });
+  const [localShuttle, setLocalShuttle] = useState(session.shuttleCount ?? 15);
+useEffect(() => { setLocalShuttle(session.shuttleCount ?? 15); }, [session.shuttleCount]);
+const setShuttle = (value: number) => { setLocalShuttle(value); };
+const handleShuttleBlur = () => { if (localShuttle !== session.shuttleCount) updateSettings({ ...session, shuttleCount: localShuttle }); };
 
   const endStr = session.endTime ? new Date(session.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
   const displayDate = session.endTime ? new Date(session.endTime) : new Date((session.sessionDate || session.date) + 'T00:00:00');
@@ -196,8 +214,8 @@ function MoneySheet({ session, calc, players, updateSettings, updatePayment, clo
               <input
                 type="number"
                 min="0"
-                value={session.shuttleCount ?? 15}
-                onChange={e => setShuttle(+e.target.value || 0)}
+                value={localShuttle}
+                onChange={e => setShuttle(+e.target.value || 0)} onBlur={handleShuttleBlur}
                 disabled={session.isFinalized}
                 className="w-14 text-center rounded-md px-1 py-1 border border-teal-600 text-sm font-bold text-primary focus:outline-none focus:ring-2 focus:ring-white bg-white disabled:opacity-80 disabled:bg-gray-200"
               />
