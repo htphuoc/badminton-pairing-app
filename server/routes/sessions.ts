@@ -16,7 +16,7 @@ const p = <T>(s: string): T => JSON.parse(s);
 
 async function getGroupId(req: Request): Promise<string | null> {
   if (req.user!.role === 'ADMIN') return null;
-  return req.user!.groupId ?? resolveHostGroup(req.user!.id);
+  return req.user!.groupId ?? await resolveHostGroup(req.user!.id);
 }
 
 async function assertSessionAccess(req: Request, res: Response, sessionId: string): Promise<{ ok: boolean; session?: typeof sessions.$inferSelect }> {

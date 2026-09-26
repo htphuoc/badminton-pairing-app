@@ -372,8 +372,8 @@ export default function SessionPage() {
                   className={`rounded-xl py-3 font-extrabold text-sm text-white
                     ${pendingSessionType === 'VÃNG LAI' ? 'bg-emerald-600' : 'bg-primary'}`}
                 >
-                  BẮT ĐẦU
-                </button>
+                      {creatingSession ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN'}
+                    </button>
               </div>
             </div>
           </div>
