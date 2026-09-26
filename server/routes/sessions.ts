@@ -525,7 +525,7 @@ router.post('/:id/suggest-match', async (req: Request, res: Response): Promise<v
   });
 
   if (!suggestion) {
-    res.status(404).json({ error: 'KhÃ´ng Ä‘á»§ 4 ngÆ°á»i chá» Ä‘á»ƒ xáº¿p tráº­n' });
+    res.status(404).json({ error: 'Không đủ 4 người chờ để xếp trận' });
     return;
   }
 
