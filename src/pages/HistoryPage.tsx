@@ -123,11 +123,16 @@ export default function HistoryPage() {
               </span>
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${s.sessionType === 'VÃNG LAI' ? 'bg-emerald-600' : 'bg-primary'} text-white`}>
-                {s.sessionType === 'VÃNG LAI' ? 'Vãng lai' : 'Cố định'}
+              <div className="flex flex-wrap justify-end gap-1">
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${s.sessionType === 'VÃNG LAI' ? 'bg-emerald-600' : 'bg-primary'} text-white`}>
+                  {s.sessionType === 'VÃNG LAI' ? 'Vãng lai' : 'Cố định'}
                 </span>
-                {s.isFinalized && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-600 text-white ml-1">Đã chốt</span>}
-              </span>
+                {s.isFinalized && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-600 text-white">
+                    Đã chốt
+                  </span>
+                )}
+              </div>
               <b className="text-primary text-sm">{money(costs.total)}</b>
             </div>
             <ChevronRight size={18} className="text-teal-400 flex-shrink-0" />
