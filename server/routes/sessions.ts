@@ -443,7 +443,7 @@ router.post('/:id/matches', async (req: Request, res: Response): Promise<void> =
     sessionId: session.id,
     groupId: session.groupId,
     courtId: String(courtId),
-    matchType: matchType ?? 'Tá»° DO',
+    matchType: matchType ?? 'TỰ DO',
     team1: j(team1),
     team2: j(team2),
     startTime: now(),
