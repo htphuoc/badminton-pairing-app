@@ -133,7 +133,19 @@ export default function HistoryPage() {
                   </span>
                 )}
               </div>
-              <b className="text-primary text-sm">{money(costs.total)}</b>
+              {(() => {
+                const received = Math.round(costs.participants.filter(p => s.players?.find(sp => sp.playerId === p.playerId)?.hasPaid).reduce((sum, p) => sum + costs.owed(p), 0));
+                return (
+                  <div className="text-right flex flex-col items-end">
+                    
+                    <div className="text-sm font-black text-primary whitespace-nowrap">
+                      <span className="text-emerald-600">{money(received)}</span>
+                      <span className="text-gray-300 mx-1">/</span>
+                      {money(costs.total)}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <ChevronRight size={18} className="text-teal-400 flex-shrink-0" />
           </button>
