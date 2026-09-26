@@ -28,7 +28,7 @@ function MatchTypeBadge({ type }: { type: string }) {
     'TỰ DO': 'bg-emerald-600 text-white',
   };
   return (
-    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${colors[type] ?? 'bg-gray-400 text-white'}`}>
+    <span className={`text-[10px] font-bold px-2 py-0.5 font-sans rounded-full ${colors[type] ?? 'bg-gray-400 text-white'}`}>
       {type}
     </span>
   );
@@ -90,6 +90,7 @@ export default function SessionPage() {
     }
   }, [endSession, endingSession]);
   const [pendingSessionType, setPendingSessionType] = useState<'CỐ ĐỊNH' | 'VÃNG LAI' | null>(null);
+  const [creatingSession, setCreatingSession] = useState(false);
   const [autoPreview, setAutoPreview] = useState<{
     courtId: string;
     suggestion: MatchSuggestion;
@@ -355,14 +356,19 @@ export default function SessionPage() {
                   Hủy
                 </button>
                 <button
-                  onClick={async () => {
-                    try {
-                      await createSession(courts, mins, ids, pendingSessionType);
-                      setPendingSessionType(null);
-                    } catch (e: any) {
-                      alert('Lỗi tạo buổi chơi: ' + e.message);
-                    }
-                  }}
+                  disabled={creatingSession}
+                    onClick={async () => {
+                      if (creatingSession) return;
+                      setCreatingSession(true);
+                      try {
+                        await createSession(courts, mins, ids, pendingSessionType);
+                        setPendingSessionType(null);
+                      } catch (e: any) {
+                        alert('Lỗi tạo buổi chơi: ' + e.message);
+                      } finally {
+                        setCreatingSession(false);
+                      }
+                    }}
                   className={`rounded-xl py-3 font-extrabold text-sm text-white
                     ${pendingSessionType === 'VÃNG LAI' ? 'bg-emerald-600' : 'bg-primary'}`}
                 >
@@ -537,7 +543,7 @@ export default function SessionPage() {
       <section className="bg-white rounded-2xl overflow-hidden shadow-sm">
         <div className="px-4 py-2.5 border-b border-teal-50 flex justify-between items-center">
           <b className="uppercase tracking-wide text-sm">ĐANG CHỜ</b>
-          <span className="bg-teal-100 text-primary text-xs font-black px-2 py-0.5 rounded-full">
+          <span className="bg-teal-100 text-primary text-xs font-bold px-2 py-0.5 font-sans rounded-full">
             {waiting.length} người
           </span>
         </div>

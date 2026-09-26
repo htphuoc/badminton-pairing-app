@@ -53,7 +53,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   const groupId = await getGroupScope(req);
 
   const query = db.select().from(members);
-  const result = await (groupId ? query.where(eq(members.groupId, groupId)) : query);
+  const result = await (groupId ? query.where(and(eq(members.groupId, groupId), eq(members.isActive, true))) : query.where(eq(members.isActive, true)));
 
   const memberIds = result.map(m => m.id);
   const careerByMember = new Map<string, number>();
