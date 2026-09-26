@@ -43,7 +43,7 @@ const createMemberSchema = z.object({
   name: z.string().min(1),
   gender: z.enum(['MALE', 'FEMALE']),
   skillLevel: z.enum(['Y', 'TBY', 'TB', 'K']),
-  memberType: z.enum(['CÃ¡Â»Â Ã„ÂÃ¡Â»Å NH', 'VÃNG LAI']),
+  memberType: z.enum(['CỐ ĐỊNH', 'VÃNG LAI']),
   phone: z.string().optional(),
   note: z.string().optional(),
 });
